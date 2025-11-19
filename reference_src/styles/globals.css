@@ -1,0 +1,398 @@
+html {
+  min-height: 100%;
+  height: 100%;
+  background: linear-gradient(#101c2e, #213e67);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+:root {
+  --bg:  #242526;
+  --bg-accent: #484a4d;
+  --text-color: #dadce1;
+  --nav-size: 60px;
+  --border: 1px solid #474a4d;
+  --border-radius: 8px;
+  --speed: 500ms; 
+}
+
+body {
+  min-height: 100vh;
+  height: auto;
+  background: none;
+  margin: 0px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #d0d0d0;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+h1 {
+  padding:10px;
+  text-align: center;
+  font-weight: 500;
+  margin:auto;
+  color:white
+}
+
+h5, h6 {
+  text-align: left;
+  word-wrap: break-word;
+  padding: 10px;
+  margin:auto;
+}
+
+.info{
+  color: rgb(100, 100, 255);
+}
+
+h2, h3, h4 {
+  padding: 10px;
+  text-align: center;
+  margin:auto;
+  font-weight:500;
+  color: #d0d0d0;
+  word-wrap:break-word;
+}
+
+label {
+  padding: 0;
+  font-size: medium;
+  font-weight:500;
+}
+
+.paragraph-container{
+  padding: 20px !important;
+  text-align: justify;
+}
+
+input {
+  background-color:#0c1624;
+  border-radius: 10px;
+  border-width: 0px;
+  overflow: scroll;
+  color: #d0d0d0;
+  text-align: center;
+  width: 95%;
+  height: 5vh;
+  font-size:xx-large;
+  font-weight: 500;
+  letter-spacing: 1px;
+  outline-style: none;
+  padding: 10px;
+}
+
+button {
+  transition: all 0.25s;
+}
+
+.addressInput {
+  font-size:medium;
+}
+
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/*DROPDOWN STUFF*/
+
+.dropdown {
+  background-color:#0c1624;
+  border-radius: 10px;
+  border-width: 0px;
+  color: #d0d0d0;
+  text-align: center;
+  width: 95%;
+  font-size:x-large;
+  font-weight: 500;
+  letter-spacing: 1px;
+  outline-style: none;
+  padding: 10px;
+  margin: 0px;
+}
+
+
+.dropdown label {
+  cursor: pointer;
+  background-color:#0c1624;
+  transition:height 1s linear;
+  border-radius: 10px;
+  border-width: 0px;
+  color: #d0d0d0;
+  text-align: center;
+  width: 95%;
+  height: 5vh;
+  font-size:x-large;
+  font-weight: 500;
+  letter-spacing: 1px;
+  outline-style: none;
+  padding: 10px;
+}
+
+/*END DROPDOWN STUFF*/
+
+.page-container button {
+  outline: solid #0c1624 3px;
+  background-color: rgb(255, 255, 255, 0.1);
+  color: white;
+  padding: 10px 20px;
+  width: 95%;
+  margin: 10px 10px 10px;
+  font-weight:600;
+  border: skyblue;
+  border-width: 1px;
+  font-size: medium;
+  border-radius: 15px;
+  cursor: pointer;
+}
+
+.transaction-bar{
+  width: 90vw;
+  margin: 5vh auto 0;
+  display: flex;
+  padding: 10px;
+  gap: 10px;
+  border-radius: 10px;
+  overflow: scroll;
+}
+
+.transaction-bar button{
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: transparent;
+  border-radius: 15px;
+  color: #d0d0d0;
+  border: none;
+  cursor: pointer;
+  font-size: medium;
+  font-weight: 500;
+  padding: 10px 20px;
+  margin: 0px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.transaction-bar .active {
+  background-color:#101c2e;
+  outline: solid #090e1a 3px;
+  color:white;
+}
+
+.navbar {
+  background-color: #0c1624;
+  color: white;
+  display: flex;
+  justify-content:space-between;
+  margin: 0px;
+  padding: 0px;
+  top:0px;
+  width:100vw;
+}
+
+.navbar-buttons {
+  background-color: rgb(16, 28, 46, 0.0);
+  color: white;
+  display: flex;
+  justify-content:flex-start;
+  margin:0px;
+  top:0px;
+  width:100vw;
+  overflow:scroll;
+}
+
+.navbar button {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: transparent;
+  color: white;
+  font-weight: 500;
+  padding: 5px;
+  border: none;
+  cursor: pointer;
+  font-size:medium;
+  border-radius: 15px;
+  margin: 10px;
+}
+
+.transaction-bar button:hover {
+  background-color:rgb(46, 58, 76);
+}
+
+.page-container button:hover {
+  background-color:rgb(255, 255, 255, 0.2);
+}
+
+.navbar button:hover {
+  background-color:rgb(255, 255, 255, 0.1);
+}
+
+.title-container{
+  margin: auto ;
+  text-align: center;
+  font-size: xx-large;
+  align-items: center;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90vw;
+}
+
+.page-container {
+  transition:height 1s;
+  border-style: solid;
+  border-color: rgb(32, 32, 32);
+  outline-width: 2px;
+  margin: auto;
+  margin-bottom: 10px;
+  background-color: #101c2e;
+  border-radius: 20px;
+  display:flex;
+  flex-direction: column;
+  width:90vw;
+  border: solid #090e1a 5px;
+}
+
+.grid-container {
+  display: grid;
+  background-color: #101c2e;
+  border-radius: 15px;
+  text-align: center;
+  gap: 10px;
+  margin:10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.grid-item{
+  background-color: #0c1624;
+  padding: 10px;
+  border-radius: 15px;
+}
+
+.message {
+  background-color:#0c1624;
+  border-radius: 10px;
+  border-width: 0px;
+  color: #d0d0d0;
+  text-align: center;
+  width: 95%;
+  height: 5vh;
+  font-size:medium;
+  font-weight: 500;
+  letter-spacing: 1px;
+  outline-style: none;
+  padding: 10px;
+}
+
+.amount-message {
+  overflow: scroll;
+  background-color:#0c1624;
+  border-radius: 10px;
+  border-width: 0px;
+  color: #d0d0d0;
+  text-align: center;
+  width: 95%;
+  height: 5vh;
+  font-size:xx-large;
+  font-weight: 500;
+  letter-spacing: 1px;
+  outline-style: none;
+  padding: 10px;
+}
+
+.homeButton{
+  margin: 0px;
+  padding: 0px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.homeButton:hover {
+  background-color:#0c1624;
+}
+
+#homeButton{
+  color: white;
+  font-size: large;
+  font-weight: 600;
+  margin:5px;
+}
+
+#homeButton:hover {
+  background-color:#0c1624;
+}
+
+#paysec-text {
+  display: none;
+}
+
+#lockIcon {
+  background-image: url('../components/lock.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin:0;
+  padding:8px;
+  color: transparent;
+}
+
+#connectWalletButton {
+  font-size: medium;
+  padding:10px;
+  margin-left: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+  background-color: rgb(26, 38, 56, 1.0);
+  color: white;
+  border: none;
+  width: fit-content;
+  font-weight: 600;
+  border-radius: 15px;
+  cursor: pointer;
+  outline: solid #090e1a 0px;
+}
+
+#connectWalletButton:hover{
+  background-color: rgb(46, 58, 76, 1.0);}
+
+.group-container {
+  border-style: solid;
+  border-color: rgb(64, 64, 64);
+  margin: 20px;
+  padding: 20px;
+  border-radius: 10px;
+  background-color: 0c1624;
+}
+
+.form-group {
+  transition:all 1s;
+  background-color: #0c1624;
+  margin: 10px;
+  padding: 10px;
+  border-radius: 15px;
+}
+
+@media (min-width: 550px) {
+  .page-container {
+    width: 500px;
+  }
+  .title-container{
+    width: 500px;
+  }
+
+  .transaction-bar{
+    width: 500px;
+  }
+
+  #paysec-text {
+    display: flex;
+  }
+
+  .coinIcon {
+    width: 32px;
+    height: 32px;
+    margin: 0px;
+    padding: 0px;
+  }
+  
+}
