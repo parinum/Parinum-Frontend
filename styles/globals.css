@@ -5,9 +5,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 15, 23, 42;
-  --background-end-rgb: 30, 41, 59;
+  --bg-1: #050914;
+  --bg-2: #0a1020;
+  --bg-3: #060914;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --panel: rgba(9, 15, 28, 0.9);
+  --panel-strong: rgba(9, 15, 28, 0.96);
+  --border-subtle: rgba(100, 116, 139, 0.35);
+  --nav-hover: rgba(255, 255, 255, 0.08);
+  --nav-active: rgba(255, 255, 255, 0.12);
+  --navbar-bg: rgba(6, 10, 20, 0.9);
+  --navbar-bg-strong: rgba(6, 10, 20, 0.95);
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg-1: #f8fafc;
+  --bg-2: #e6edf5;
+  --bg-3: #dfe7f1;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel-strong: rgba(255, 255, 255, 0.96);
+  --border-subtle: rgba(15, 23, 42, 0.12);
+  --nav-hover: rgba(15, 23, 42, 0.08);
+  --nav-active: rgba(15, 23, 42, 0.12);
+  --navbar-bg: rgba(255, 255, 255, 0.88);
+  --navbar-bg-strong: rgba(255, 255, 255, 0.95);
+  color-scheme: light;
 }
 
 * {
@@ -21,9 +47,12 @@ body {
   height: 100%;
   overflow-x: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: linear-gradient(135deg, rgb(var(--background-start-rgb)) 0%, rgb(var(--background-end-rgb)) 100%);
-  color: rgb(var(--foreground-rgb));
+  background:
+    radial-gradient(60% 60% at 20% 20%, rgba(99, 102, 241, 0.05), transparent 40%),
+    linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
+  color: var(--text-primary);
   scroll-behavior: smooth;
+  transition: background 0.4s ease, color 0.25s ease;
 }
 
 /* Custom scrollbar */
@@ -53,6 +82,60 @@ body {
 ::-moz-selection {
   background: rgba(71, 85, 105, 0.4);
   color: white;
+}
+
+/* Theme aware helpers */
+.theme-surface {
+  background-color: var(--panel);
+  border: 1px solid var(--border-subtle);
+}
+
+.theme-surface-strong {
+  background-color: var(--panel-strong);
+  border: 1px solid var(--border-subtle);
+}
+
+.nav-link {
+  color: var(--text-secondary);
+}
+
+.nav-link:hover {
+  background-color: var(--nav-hover);
+  color: var(--text-primary);
+}
+
+.nav-link.is-active {
+  background-color: var(--nav-active);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .navbar-wallet-btn {
+  background-color: #0f172a;
+  color: #fff;
+}
+
+[data-theme='light'] .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme='light'] [class*='bg-dark'],
+[data-theme='light'] [class*='bg-dark-'] {
+  background-color: var(--panel) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='light'] [class*='text-white'],
+[data-theme='light'] [class*='text-dark'],
+[data-theme='light'] [class*='text-gray-300'],
+[data-theme='light'] [class*='text-gray-400'],
+[data-theme='light'] [class*='text-slate-300'] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme='light'] .text-dark-300,
+[data-theme='light'] .text-dark-400,
+[data-theme='light'] .text-dark-500 {
+  color: var(--text-secondary) !important;
 }
 
 /* Focus styles */
