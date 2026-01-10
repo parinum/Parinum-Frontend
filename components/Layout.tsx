@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/router'
 import NavBar from './NavBar'
 import Footer from './Footer'
 
@@ -13,14 +14,26 @@ const BackgroundParinumIcons = dynamic(() => import('./BackgroundParinumIcons'),
 })
 
 export default function Layout({ children }: LayoutProps) {
+  const { pathname } = useRouter()
+  const showDecorativeBackground = pathname === '/'
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
+    <div
+      className="min-h-screen"
+      style={{
+        background:
+          'linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%)',
+      }}
+    >
       <div className="relative">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-cyber-grid opacity-30" />
-  {/* Static Parinum icon field (client-only to avoid SSR mismatch) */}
-  <BackgroundParinumIcons />
-        
+        {/* Background Pattern and logos only on the home page */}
+        {showDecorativeBackground && (
+          <>
+            <div className="absolute inset-0 bg-cyber-grid opacity-30" />
+            <BackgroundParinumIcons />
+          </>
+        )}
+
         {/* Main Content */}
         <div className="relative z-10">
           <NavBar />

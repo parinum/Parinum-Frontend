@@ -9,12 +9,17 @@ import ParinumLight from '../icons/parinum.svg'
 type IconSpec = {
 	id: number
 	size: number // px
-	topVh: number
-	leftVw: number
+	top: number // px
+	left: number // px
 	rotate: number // deg
 	blur: number // px
 	opacity: number
 	src: string
+	jitterX: number // px
+	jitterY: number // px
+	rotAmp: number // deg
+	duration: number // s
+	delay: number // s
 }
 
 // Map a value from one range to another
@@ -66,19 +71,42 @@ const buildSrcList = (count: number): string[] => {
 	return list
 }
 
-const generateIcons = (count: number): IconSpec[] => {
+const generateIcons = (count: number, viewportWidth: number, viewportHeight: number): IconSpec[] => {
 	const minSize = 20
 	const maxSize = 100
 	const maxBlur = 10// px on the smallest icons
+	const minSpacing = 12 // px padding between icon edges
 
 	const icons: IconSpec[] = []
 	const srcList = buildSrcList(count)
-	for (let i = 0; i < count; i++) {
+	let attempts = 0
+	const maxAttempts = count * 120
+
+	const fitsWithoutOverlap = (left: number, top: number, size: number) => {
+		for (const placed of icons) {
+			const dx = left - placed.left
+			const dy = top - placed.top
+			const minDist = (size + placed.size) / 2 + minSpacing
+			if (dx * dx + dy * dy < minDist * minDist) {
+				return false
+			}
+		}
+		return true
+	}
+
+	while (icons.length < count && attempts < maxAttempts) {
+		attempts++
 		const size = Math.round(minSize + rand() * (maxSize - minSize))
 
-		// Position in viewport units, clamped away from edges to keep visible
-		const topVh = Math.round(5 + rand() * 90)
-		const leftVw = Math.round(5 + rand() * 90)
+		// Keep icons away from edges; margin scales with size
+		const margin = size * 0.75 + 12
+		const usableWidth = Math.max(viewportWidth - margin * 2, size)
+		const usableHeight = Math.max(viewportHeight - margin * 2, size)
+
+		const left = margin + rand() * usableWidth
+		const top = margin + rand() * usableHeight
+
+		if (!fitsWithoutOverlap(left, top, size)) continue
 
 		// Rotation between -30 and 30 degrees
 		const rotate = Math.round(-30 + rand() * 60)
@@ -87,20 +115,30 @@ const generateIcons = (count: number): IconSpec[] => {
 		const blur = Number(map(size, minSize, maxSize, maxBlur, 1).toFixed(2))
 
 		// Subtle opacity; slightly higher when larger
-			const opacity = Number(map(size, minSize, maxSize, 0.12, 0.2).toFixed(2))
+		const opacity = Number(map(size, minSize, maxSize, 0.12, 0.2).toFixed(2))
 
-			const src = srcList[i % srcList.length] || URL_DARK
+		// Small, gentle jitter and rotation amplitude scaled by size
+		// Smaller icons wander more; larger ones stay steadier
+		const jitterMax = map(size, minSize, maxSize, 12, 4)
+		const jitterMin = 2
+		const jitterX = Number((jitterMin + rand() * (jitterMax - jitterMin)).toFixed(2))
+		const jitterY = Number((jitterMin + rand() * (jitterMax - jitterMin)).toFixed(2))
+		const rotAmp = Number(map(size, minSize, maxSize, 8, 2).toFixed(2))
+		const duration = Number((6 + rand() * 6).toFixed(2)) // 6–12s
+		const delay = Number((-rand() * duration).toFixed(2)) // negative to desync starts
 
-			icons.push({ id: i, size, topVh, leftVw, rotate, blur, opacity, src })
+		const src = srcList[icons.length % srcList.length] || URL_DARK
+
+		icons.push({ id: icons.length, size, top, left, rotate, blur, opacity, src, jitterX, jitterY, rotAmp, duration, delay })
 	}
 	return icons
 }
 
 /**
  * BackgroundParinumIcons
- * Renders a static, non-animated layer of Parinum icons at random
+ * Renders a lightly animated layer of Parinum icons at random
  * positions/sizes/rotations. High-performance: computed once on mount,
- * no timers, no animations, pointer-events disabled.
+ * pointer-events disabled.
  */
 export default function BackgroundParinumIcons() {
 	const [icons, setIcons] = React.useState<IconSpec[] | null>(null)
@@ -109,10 +147,12 @@ export default function BackgroundParinumIcons() {
 	React.useEffect(() => {
 		// Heuristic: fewer icons on small screens
 		const isSmall = typeof window !== 'undefined' && window.innerWidth < 768
+		const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280
+		const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720
 		const requested = isSmall ? 18 : 24
 		// Keep it strictly 50/50 by ensuring an even count
 		const evenCount = requested % 2 === 0 ? requested : requested - 1
-		setIcons(generateIcons(evenCount))
+		setIcons(generateIcons(evenCount, viewportWidth, viewportHeight))
 		// We intentionally ignore resize to keep it static (and cheaper)
 	}, [])
 
@@ -125,28 +165,69 @@ export default function BackgroundParinumIcons() {
 			style={{ zIndex: 1 }}
 		>
 			{icons.map((icon) => (
-								<img
+				<div
 					key={icon.id}
-									src={icon.src}
-					alt=""
-							decoding="async"
-							loading="eager"
-					draggable={false}
 					style={{
 						position: 'absolute',
-						top: `${icon.topVh}vh`,
-						left: `${icon.leftVw}vw`,
+						top: `${icon.top}px`,
+						left: `${icon.left}px`,
 						width: `${icon.size}px`,
-						height: 'auto',
-						transform: `translate(-50%, -50%) rotate(${icon.rotate}deg)`,
-						filter: `blur(${icon.blur}px)`,
-						opacity: icon.opacity,
-						// Avoid expensive composition hints; keep it simple
-						imageRendering: 'auto',
+						height: `${icon.size}px`,
+						transform: 'translate(-50%, -50%)',
 					}}
-				/>
+				>
+					<img
+						src={icon.src}
+						alt=""
+						decoding="async"
+						loading="eager"
+						draggable={false}
+						style={{
+							width: '100%',
+							height: '100%',
+							filter: `blur(${icon.blur}px)`,
+							opacity: icon.opacity,
+							imageRendering: 'auto',
+							transformOrigin: 'center',
+							animation: `wobbleSpin ${icon.duration}s ease-in-out infinite alternate`,
+							animationDelay: `${icon.delay}s`,
+							// Per-icon motion variables
+							// @ts-expect-error CSS custom properties
+							'--base-rot': `${icon.rotate}deg`,
+							// @ts-expect-error CSS custom properties
+							'--jitter-x': `${icon.jitterX}px`,
+							// @ts-expect-error CSS custom properties
+							'--jitter-y': `${icon.jitterY}px`,
+							// @ts-expect-error CSS custom properties
+							'--rot-amp': `${icon.rotAmp}deg`,
+						}}
+					/>
+				</div>
 			))}
+			<style jsx global>{`
+				@keyframes wobbleSpin {
+					0% {
+						transform: translate(calc(var(--jitter-x) * -0.6), calc(var(--jitter-y) * -0.5))
+							rotate(calc(var(--base-rot) - var(--rot-amp)));
+					}
+					25% {
+						transform: translate(calc(var(--jitter-x) * 0.8), calc(var(--jitter-y) * -1))
+							rotate(calc(var(--base-rot) + var(--rot-amp) * 0.4));
+					}
+					50% {
+						transform: translate(calc(var(--jitter-x)), calc(var(--jitter-y) * 0.9))
+							rotate(calc(var(--base-rot) + var(--rot-amp)));
+					}
+					75% {
+						transform: translate(calc(var(--jitter-x) * -0.8), calc(var(--jitter-y)))
+							rotate(calc(var(--base-rot) - var(--rot-amp) * 0.5));
+					}
+					100% {
+						transform: translate(calc(var(--jitter-x) * -0.6), calc(var(--jitter-y) * -0.5))
+							rotate(calc(var(--base-rot) - var(--rot-amp)));
+					}
+				}
+			`}</style>
 		</div>
 	)
 }
-

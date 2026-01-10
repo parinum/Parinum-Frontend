@@ -5,6 +5,7 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com'],
   },
+  transpilePackages: ['@rainbow-me/rainbowkit'],
 }
 
 module.exports = nextConfig
