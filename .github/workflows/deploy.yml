@@ -73,31 +73,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
 
-      - name: Configure Git for Private Modules
-        env:
-          TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          if [ -z "$TOKEN" ]; then
-            echo "::error::GH_PAT secret is empty! Check Settings > Secrets > Actions."
-            exit 1
-          fi
-          
-          # 1. Check who this token belongs to
-          echo "Checking Token Identity..."
-          curl -H "Authorization: token $TOKEN" https://api.github.com/user
-          
-          # 2. Configure URL rewriting (cover all bases)
-          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "ssh://git@github.com/"
-          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "git+ssh://git@github.com/"
-
-      - name: Test Connection to Private Repo
-        run: |
-          echo "Testing HEAD access to parinum/Parinum-Upgradeable..."
-          # Explicitly use token in URL for the test to rule out config issues
-          git ls-remote https://${{ secrets.GH_PAT }}@github.com/parinum/Parinum-Upgradeable.git HEAD || { echo "::error::Connection failed! The Token does not have access to parinum/Parinum-Upgradeable"; exit 1; }
-          echo "Connection successful!"
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PARINUM_SSH_KEY }}
 
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
