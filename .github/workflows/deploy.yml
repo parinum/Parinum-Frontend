@@ -87,15 +87,16 @@ jobs:
           curl -H "Authorization: token $TOKEN" https://api.github.com/user
           
           # 2. Configure URL rewriting (cover all bases)
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git+ssh://git@github.com/"
+          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "git+ssh://git@github.com/"
 
       - name: Test Connection to Private Repo
         run: |
           echo "Testing HEAD access to parinum/Parinum-Upgradeable..."
-          git ls-remote https://github.com/parinum/Parinum-Upgradeable.git HEAD || { echo "::error::Connection failed! The Token does not have access to parinum/Parinum-Upgradeable"; exit 1; }
+          # Explicitly use token in URL for the test to rule out config issues
+          git ls-remote https://${{ secrets.GH_PAT }}@github.com/parinum/Parinum-Upgradeable.git HEAD || { echo "::error::Connection failed! The Token does not have access to parinum/Parinum-Upgradeable"; exit 1; }
           echo "Connection successful!"
 
       - name: Install dependencies
