@@ -18,7 +18,7 @@ export default function PurchaseStepsNavigation({ steps }: PurchaseStepsNavigati
   }
 
   return (
-    <div className="relative flex flex-wrap justify-center gap-2 mb-8 p-2 bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl">
+    <div className="relative flex flex-wrap justify-center gap-2 mb-8 p-2 bg-white/50 dark:bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl">
       {/* Buttons */}
       {steps.map((step) => (
         <button
@@ -26,8 +26,8 @@ export default function PurchaseStepsNavigation({ steps }: PurchaseStepsNavigati
           onClick={() => navigateTo(step.id)}
           className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 ${
             step.active
-              ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-lg'
-              : 'text-dark-400 hover:text-white hover:bg-dark-700/50'
+              ? 'bg-gradient-to-r from-primary-300 to-secondary-300 dark:from-primary-700 dark:to-secondary-700 text-white shadow-lg'
+              : 'text-secondary-600 dark:text-dark-400 hover:text-primary-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-dark-700/50'
           }`}
         >
           {step.label}

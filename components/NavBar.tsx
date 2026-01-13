@@ -105,7 +105,7 @@ export default function NavBar({ children }: NavBarProps) {
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'Purchases', href: '/purchases' },
-    { name: 'Staking', href: '/withdraw-dividend' },
+    { name: 'Staking', href: '/stake-dashboard' },
   { name: 'PRM', href: '/psc-funding' },
     { name: 'Governance', href: '/governance' },
   ]
@@ -126,7 +126,7 @@ export default function NavBar({ children }: NavBarProps) {
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-1 group">
               <Image src={ParinumLogo} alt="Parinum logo" width={36} height={36} priority />
-              <span className="text-xl font-bold text-white font-sans">Parinum</span>
+              <span className="text-xl font-bold text-secondary-900 dark:text-white font-sans">Parinum</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -216,7 +216,7 @@ export default function NavBar({ children }: NavBarProps) {
                             return (
                               <button
                                 onClick={openConnectModal}
-                                className="px-5 py-2 rounded-xl font-medium transition-all duration-300 text-white shadow-lg navbar-wallet-btn hover:opacity-90"
+                                className="px-5 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg navbar-wallet-btn hover:opacity-90"
                               >
                                 Connect
                               </button>
@@ -229,7 +229,7 @@ export default function NavBar({ children }: NavBarProps) {
                                 onClick={openChainModal}
                                 className="px-5 py-2 rounded-xl font-medium transition-all duration-300 bg-red-500/20 text-red-400 border border-red-500/30"
                               >
-                                Wrong network
+                                Wrong network ({chain.id})
                               </button>
                             );
                           }
@@ -268,7 +268,7 @@ export default function NavBar({ children }: NavBarProps) {
               <div className="md:hidden">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300"
+                  className="p-2 rounded-lg text-secondary-600 dark:text-gray-300 hover:text-secondary-900 dark:hover:text-white hover:bg-white/10 transition-all duration-300"
                   aria-expanded={isMenuOpen}
                   aria-label="Toggle navigation menu"
                 >
@@ -313,7 +313,7 @@ export default function NavBar({ children }: NavBarProps) {
                             return (
                               <button
                                 onClick={openConnectModal}
-                                className="px-5 py-2 rounded-xl font-medium transition-all duration-300 text-white shadow-lg navbar-wallet-btn hover:opacity-90"
+                                className="px-5 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg navbar-wallet-btn hover:opacity-90"
                               >
                                 Connect
                               </button>
@@ -326,7 +326,7 @@ export default function NavBar({ children }: NavBarProps) {
                                 onClick={openChainModal}
                                 className="px-5 py-2 rounded-xl font-medium transition-all duration-300 bg-red-500/20 text-red-400 border border-red-500/30"
                               >
-                                Wrong network
+                                Wrong network ({chain.id})
                               </button>
                             );
                           }

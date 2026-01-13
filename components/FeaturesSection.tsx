@@ -53,7 +53,7 @@ export default function FeaturesSection() {
         "End-to-end encryption for all transactions",
         "Cold storage for maximum protection"
       ],
-      color: "from-slate-600 to-slate-700"
+      color: "from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white"
     },
     {
       icon: SpeedIcon,
@@ -66,7 +66,7 @@ export default function FeaturesSection() {
         "Optimized gas fee management",
         "Real-time transaction tracking"
       ],
-      color: "from-slate-500 to-slate-600"
+      color: "from-slate-100 to-slate-200 dark:from-slate-500 dark:to-slate-600 text-slate-800 dark:text-white"
     },
     {
       icon: DecentralizedIcon,
@@ -79,7 +79,7 @@ export default function FeaturesSection() {
         "Open-source development",
         "Transparent operation protocols"
       ],
-      color: "from-slate-700 to-slate-800"
+      color: "from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 text-slate-800 dark:text-white"
     },
     {
       icon: ScalabilityIcon,
@@ -92,7 +92,7 @@ export default function FeaturesSection() {
         "Parallel transaction processing",
         "Auto-scaling infrastructure"
       ],
-      color: "from-slate-600 to-slate-700"
+      color: "from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white"
     },
     {
       icon: IntegrationIcon,
@@ -105,7 +105,7 @@ export default function FeaturesSection() {
         "Webhook support for real-time updates",
         "Sandbox environment for testing"
       ],
-      color: "from-slate-500 to-slate-600"
+      color: "from-slate-100 to-slate-200 dark:from-slate-500 dark:to-slate-600 text-slate-800 dark:text-white"
     },
     {
       icon: AnalyticsIcon,
@@ -118,7 +118,7 @@ export default function FeaturesSection() {
         "Custom analytics dashboards",
         "Export capabilities for compliance"
       ],
-      color: "from-slate-700 to-slate-800"
+      color: "from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 text-slate-800 dark:text-white"
     }
   ]
 
@@ -148,7 +148,7 @@ export default function FeaturesSection() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold text-white mb-6"
+            className="text-3xl md:text-5xl font-bold text-secondary-900 dark:text-white mb-6"
           >
             Built for the Future of
             <span className="bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent"> Finance</span>
@@ -159,7 +159,7 @@ export default function FeaturesSection() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             viewport={{ once: true }}
-            className="text-xl text-dark-300 max-w-3xl mx-auto"
+            className="text-xl text-secondary-600 dark:text-dark-300 max-w-3xl mx-auto"
           >
             Discover the powerful features that make Parinum a robust escrow and collateral platform on the EVM.
           </motion.p>
@@ -175,7 +175,7 @@ export default function FeaturesSection() {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
               onMouseEnter={() => setActiveFeature(index)}
-              className={`group relative p-8 rounded-2xl border border-primary-500/20 bg-dark-800/30 backdrop-blur-sm hover:bg-dark-800/50 transition-all duration-500 cursor-pointer ${
+              className={`group relative p-8 rounded-2xl border border-primary-500/20 bg-white/70 dark:bg-dark-800/30 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-dark-800/50 transition-all duration-500 cursor-pointer ${
                 activeFeature === index ? 'ring-2 ring-primary-500/50 transform scale-105' : ''
               }`}
             >
@@ -187,9 +187,9 @@ export default function FeaturesSection() {
               {/* Feature Content */}
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-2">{feature.title}</h3>
-                  <p className="text-primary-400 text-sm font-medium mb-3">{feature.subtitle}</p>
-                  <p className="text-dark-300 leading-relaxed">{feature.description}</p>
+                  <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">{feature.title}</h3>
+                  <p className="text-primary-600 dark:text-primary-400 text-sm font-medium mb-3">{feature.subtitle}</p>
+                  <p className="text-secondary-600 dark:text-dark-300 leading-relaxed">{feature.description}</p>
                 </div>
 
                 {/* Feature Details */}
@@ -205,7 +205,7 @@ export default function FeaturesSection() {
                   <div className="pt-4 border-t border-primary-500/20">
                     <ul className="space-y-2">
                       {feature.details.map((detail, detailIndex) => (
-                        <li key={detailIndex} className="flex items-center text-dark-400 text-sm">
+                        <li key={detailIndex} className="flex items-center text-secondary-600 dark:text-dark-400 text-sm">
                           <div className="w-1.5 h-1.5 bg-primary-400 rounded-full mr-3" />
                           {detail}
                         </li>
@@ -230,10 +230,10 @@ export default function FeaturesSection() {
           className="text-center"
         >
           <div className="bg-gradient-to-r from-primary-500/10 to-secondary-500/10 border border-primary-500/20 rounded-2xl p-8 backdrop-blur-sm">
-            <h3 className="text-2xl font-bold text-white mb-4">
+            <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">
               Ready to experience the future?
             </h3>
-            <p className="text-dark-300 mb-6 max-w-2xl mx-auto">
+            <p className="text-secondary-600 dark:text-dark-300 mb-6 max-w-2xl mx-auto">
               Build secure, escrowed flows backed by on-chain collateral with Parinum.
             </p>
             <motion.button

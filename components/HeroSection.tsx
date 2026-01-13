@@ -21,9 +21,9 @@ export default function HeroSection() {
     <section className="relative flex items-center justify-center overflow-hidden pt-24 pb-4 md:pt-32 md:pb-6">
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-slate-700/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-slate-800/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-slate-700/5 to-slate-800/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 dark:bg-slate-700/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 dark:bg-slate-800/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-500/5 to-purple-500/5 dark:from-slate-700/5 dark:to-slate-800/5 rounded-full blur-3xl animate-pulse" />
       </div>
 
   <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-0">
@@ -35,7 +35,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight"
+            className="text-4xl md:text-6xl lg:text-7xl font-bold text-secondary-900 dark:text-white mb-6 leading-tight"
           >
             <span className="bg-gradient-to-r from-slate-400 via-slate-500 to-slate-600 bg-clip-text text-transparent">
               Secure Payments
@@ -65,7 +65,7 @@ export default function HeroSection() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="group px-8 py-4 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2 hero-primary-btn"
+                className="group px-8 py-4 font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2 hero-primary-btn"
               >
                 <span>Get Started</span>
                 <ArrowRightIcon />
@@ -75,7 +75,7 @@ export default function HeroSection() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="group px-8 py-4 bg-black/50 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-black/70 transition-all duration-300 flex items-center space-x-2 hero-secondary-btn"
+              className="group px-8 py-4 font-semibold rounded-xl transition-all duration-300 flex items-center space-x-2 hero-secondary-btn backdrop-blur-sm"
             >
               <PlayIcon />
               <span>Watch Demo</span>

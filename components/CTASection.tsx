@@ -104,7 +104,7 @@ export default function CTASection() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="bg-gradient-to-r from-dark-800/80 to-dark-900/80 backdrop-blur-sm border border-primary-500/30 rounded-3xl p-12 relative overflow-hidden"
+            className="bg-gradient-to-r from-white/90 to-slate-100/90 dark:from-dark-800/80 dark:to-dark-900/80 backdrop-blur-sm border border-primary-500/30 rounded-3xl p-12 relative overflow-hidden"
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-secondary-500/10 rounded-3xl" />
@@ -126,7 +126,7 @@ export default function CTASection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="text-4xl md:text-6xl font-bold text-white mb-6"
+                className="text-4xl md:text-6xl font-bold text-secondary-900 dark:text-white mb-6"
               >
                 Build the Future with
                 <br />
@@ -140,7 +140,7 @@ export default function CTASection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
                 viewport={{ once: true }}
-                className="text-xl text-dark-300 mb-10 max-w-3xl mx-auto"
+                className="text-xl text-secondary-600 dark:text-dark-300 mb-10 max-w-3xl mx-auto"
               >
                 Build escrowed, collateralised payment flows with a self-custodial, EVM-native toolkit.
               </motion.p>
@@ -154,7 +154,7 @@ export default function CTASection() {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10 max-w-4xl mx-auto"
               >
                 {features.map((feature, index) => (
-                  <div key={index} className="flex items-center text-dark-300">
+                  <div key={index} className="flex items-center text-secondary-600 dark:text-dark-300">
                     <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                       <CheckIcon />
                     </div>
@@ -177,7 +177,7 @@ export default function CTASection() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
-                    className="flex-1 px-4 py-3 bg-dark-800/50 border border-primary-500/30 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200"
+                    className="flex-1 px-4 py-3 bg-white dark:bg-dark-800/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200"
                     required
                   />
                   <motion.button
@@ -202,7 +202,7 @@ export default function CTASection() {
                     animate={{ opacity: 1, y: 0 }}
                     className="text-green-400 text-sm mt-3 text-center"
                   >
-                    Thanks! We'll send you early access details soon.
+                    Thanks! We&apos;ll send you early access details soon.
                   </motion.p>
                 )}
               </motion.div>
@@ -212,7 +212,7 @@ export default function CTASection() {
                 whileInView={{ opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.7 }}
                 viewport={{ once: true }}
-                className="text-dark-400 text-sm"
+                className="text-secondary-500 dark:text-dark-400 text-sm"
               >
                 No spam, unsubscribe at any time. We respect your privacy.
               </motion.p>
@@ -232,15 +232,15 @@ export default function CTASection() {
               className="group"
             >
               <Link href={option.href}>
-                <div className="h-full p-8 bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-2xl hover:bg-dark-800/50 hover:border-primary-500/40 transition-all duration-300 cursor-pointer">
+                <div className="h-full p-8 bg-white/70 dark:bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-2xl hover:bg-white/90 dark:hover:bg-dark-800/50 hover:border-primary-500/40 transition-all duration-300 cursor-pointer">
                   <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${option.color} mb-6 group-hover:scale-110 transition-transform duration-300`}>
                     <option.icon />
                   </div>
 
-                  <h3 className="text-xl font-bold text-white mb-3">{option.title}</h3>
-                  <p className="text-dark-300 mb-6 leading-relaxed">{option.description}</p>
+                  <h3 className="text-xl font-bold text-secondary-900 dark:text-white mb-3">{option.title}</h3>
+                  <p className="text-secondary-600 dark:text-dark-300 mb-6 leading-relaxed">{option.description}</p>
 
-                  <div className="flex items-center text-primary-400 font-medium group-hover:text-primary-300 transition-colors duration-200">
+                  <div className="flex items-center text-primary-600 dark:text-primary-400 font-medium group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors duration-200">
                     <span>{option.action}</span>
                     <ArrowRightIcon />
                   </div>

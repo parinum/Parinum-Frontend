@@ -122,10 +122,10 @@ export default function CreateStake() {
             transition={{ duration: 0.6 }}
             className="text-center mb-8"
           >
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-secondary-900 dark:text-white mb-4">
               Create New Stake
             </h1>
-            <p className="text-dark-300">
+            <p className="text-secondary-600 dark:text-dark-300">
               Stake your PSC tokens to earn rewards based on staking duration
             </p>
           </motion.div>
@@ -136,24 +136,24 @@ export default function CreateStake() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="lg:col-span-2 bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-8"
+              className="lg:col-span-2 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-8"
             >
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Wallet Balance */}
-                <div className="p-4 bg-dark-700/30 rounded-xl">
+                <div className="p-4 bg-slate-100 dark:bg-dark-700/30 rounded-xl">
                   <div className="flex items-center justify-between">
-                    <span className="text-dark-300">Available Balance:</span>
-                    <span className="text-xl font-bold text-white">{walletBalance} PSC</span>
+                    <span className="text-secondary-600 dark:text-dark-300">Available Balance:</span>
+                    <span className="text-xl font-bold text-secondary-900 dark:text-white">{walletBalance} PSC</span>
                   </div>
                 </div>
 
                 {/* Stake Amount */}
                 <div className="space-y-3">
-                  <label className="flex items-center text-white font-medium">
+                  <label className="flex items-center text-secondary-900 dark:text-white font-medium">
                     Stake Amount
                     <div className="group relative ml-2">
                       <InfoIcon />
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-white dark:bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-secondary-600 dark:text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                         Enter the amount of PSC tokens you want to stake. Your tokens will be locked for the selected duration.
                       </div>
                     </div>
@@ -166,10 +166,10 @@ export default function CreateStake() {
                       placeholder="0.0"
                       step="0.01"
                       min="0"
-                      className="w-full px-4 py-3 pr-16 bg-dark-700/50 border border-primary-500/30 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:border-primary-500 transition-colors duration-200"
+                      className="w-full px-4 py-3 pr-16 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:border-primary-500 transition-colors duration-200"
                       required
                     />
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-dark-400">
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-secondary-400 dark:text-dark-400">
                       PSC
                     </div>
                   </div>
@@ -179,7 +179,7 @@ export default function CreateStake() {
                         key={percentage}
                         type="button"
                         onClick={() => setStakeAmount((Number(walletBalance) * Number(percentage.slice(0, -1)) / 100).toString())}
-                        className="px-3 py-1 text-xs bg-dark-700/50 text-dark-300 rounded-lg hover:bg-primary-500/20 hover:text-primary-400 transition-colors duration-200"
+                        className="px-3 py-1 text-xs bg-slate-200 dark:bg-dark-700/50 text-secondary-600 dark:text-dark-300 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-500/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-200"
                       >
                         {percentage}
                       </button>
@@ -189,11 +189,11 @@ export default function CreateStake() {
 
                 {/* Stake Duration */}
                 <div className="space-y-3">
-                  <label className="flex items-center text-white font-medium">
+                  <label className="flex items-center text-secondary-900 dark:text-white font-medium">
                     Stake Duration
                     <div className="group relative ml-2">
                       <InfoIcon />
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-white dark:bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-secondary-600 dark:text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                         Longer staking periods offer higher multipliers and better rewards. Tokens are locked for the entire duration.
                       </div>
                     </div>
@@ -201,7 +201,7 @@ export default function CreateStake() {
                   <select
                     value={stakeTime}
                     onChange={(e) => handleStakeTimeChange(e.target.value)}
-                    className="w-full px-4 py-3 bg-dark-700/50 border border-primary-500/30 rounded-xl text-white focus:outline-none focus:border-primary-500 transition-colors duration-200"
+                    className="w-full px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white focus:outline-none focus:border-primary-500 transition-colors duration-200"
                     required
                   >
                     <option value="">Select staking duration...</option>
@@ -219,11 +219,11 @@ export default function CreateStake() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isLoading || !stakeAmount || !stakeTime}
-                  className="w-full bg-gradient-to-r from-slate-600 to-slate-700 text-white py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 hover:from-slate-700 hover:to-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-slate-500/25"
+                  className="w-full bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 hover:from-slate-300 hover:to-slate-400 dark:hover:from-slate-700 dark:hover:to-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-slate-500/25"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center space-x-2">
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 border-2 border-slate-800/30 dark:border-white/30 border-t-slate-800 dark:border-t-white rounded-full animate-spin"></div>
                       <span>Creating Stake...</span>
                     </div>
                   ) : (
@@ -238,8 +238,8 @@ export default function CreateStake() {
                     animate={{ opacity: 1, y: 0 }}
                     className={`p-4 rounded-xl border ${
                       isSuccess 
-                        ? 'bg-green-500/10 border-green-500/30 text-green-400' 
-                        : 'bg-red-500/10 border-red-500/30 text-red-400'
+                        ? 'bg-green-100 dark:bg-green-500/10 border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400' 
+                        : 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -259,40 +259,40 @@ export default function CreateStake() {
               className="space-y-6"
             >
               {/* Preview Card */}
-              <div className="bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Stake Preview</h3>
+              <div className="bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">Stake Preview</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <span className="text-dark-300">Amount:</span>
-                    <span className="text-white font-medium">{stakeAmount || '0'} PSC</span>
+                    <span className="text-secondary-600 dark:text-dark-300">Amount:</span>
+                    <span className="text-secondary-900 dark:text-white font-medium">{stakeAmount || '0'} PSC</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-dark-300">Duration:</span>
-                    <span className="text-white font-medium">
+                    <span className="text-secondary-600 dark:text-dark-300">Duration:</span>
+                    <span className="text-secondary-900 dark:text-white font-medium">
                       {stakeTime ? getStakeDurationLabel(Number(stakeTime)) : 'Not selected'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-dark-300">Multiplier:</span>
-                    <span className="text-primary-400 font-bold">{multiplier}x</span>
+                    <span className="text-secondary-600 dark:text-dark-300">Multiplier:</span>
+                    <span className="text-primary-600 dark:text-primary-400 font-bold">{multiplier}x</span>
                   </div>
-                  <div className="h-px bg-dark-600"></div>
+                  <div className="h-px bg-slate-200 dark:bg-dark-600"></div>
                   <div className="flex justify-between">
-                    <span className="text-dark-300">Est. Bonus Rewards:</span>
-                    <span className="text-green-400 font-bold">{estimatedRewards} PSC</span>
+                    <span className="text-secondary-600 dark:text-dark-300">Est. Bonus Rewards:</span>
+                    <span className="text-green-600 dark:text-green-400 font-bold">{estimatedRewards} PSC</span>
                   </div>
                 </div>
               </div>
 
               {/* Quick Actions */}
-              <div className="bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+              <div className="bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push('/withdraw-dividend')}
-                    className="w-full bg-dark-700/50 text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 hover:bg-primary-500/20 hover:text-primary-400 border border-dark-600 hover:border-primary-500/30"
+                    className="w-full bg-slate-100 dark:bg-dark-700/50 text-secondary-900 dark:text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 hover:bg-primary-100 dark:hover:bg-primary-500/20 hover:text-primary-600 dark:hover:text-primary-400 border border-slate-200 dark:border-dark-600 hover:border-primary-500/30"
                   >
                     View Staking Dashboard
                   </motion.button>
@@ -300,7 +300,7 @@ export default function CreateStake() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push('/stake-dashboard')}
-                    className="w-full bg-dark-700/50 text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 hover:bg-secondary-500/20 hover:text-secondary-400 border border-dark-600 hover:border-secondary-500/30"
+                    className="w-full bg-slate-100 dark:bg-dark-700/50 text-secondary-900 dark:text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 hover:bg-secondary-100 dark:hover:bg-secondary-500/20 hover:text-secondary-600 dark:hover:text-secondary-400 border border-slate-200 dark:border-dark-600 hover:border-secondary-500/30"
                   >
                     Manage Stakes
                   </motion.button>
@@ -308,9 +308,9 @@ export default function CreateStake() {
               </div>
 
               {/* Staking Tips */}
-              <div className="bg-gradient-to-r from-slate-800/20 to-slate-700/20 border border-slate-500/20 rounded-xl p-4">
-                <h4 className="text-white font-medium mb-2">💡 Staking Tips</h4>
-                <ul className="text-sm text-dark-300 space-y-1">
+              <div className="bg-gradient-to-r from-slate-100/50 to-slate-200/50 dark:from-slate-800/20 dark:to-slate-700/20 border border-slate-500/20 rounded-xl p-4">
+                <h4 className="text-secondary-900 dark:text-white font-medium mb-2">Staking Tips</h4>
+                <ul className="text-sm text-secondary-600 dark:text-dark-300 space-y-1">
                   <li>• Longer stakes earn higher multipliers</li>
                   <li>• Rewards compound over time</li>
                   <li>• Stakes can be reset after completion</li>
@@ -331,7 +331,7 @@ export default function CreateStake() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => router.push('/withdraw-dividend')}
-              className="bg-gradient-to-r from-slate-600 to-slate-700 text-white py-3 px-8 rounded-xl font-semibold text-lg transition-all duration-300 hover:from-slate-700 hover:to-slate-800 shadow-lg hover:shadow-slate-500/25"
+              className="bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white py-3 px-8 rounded-xl font-semibold text-lg transition-all duration-300 hover:from-slate-300 hover:to-slate-400 dark:hover:from-slate-700 dark:hover:to-slate-800 shadow-lg hover:shadow-slate-500/25"
             >
               Back to Staking Dashboard
             </motion.button>

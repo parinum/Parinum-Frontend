@@ -50,7 +50,7 @@ export default function Features() {
         "Biometric authentication",
         "Smart contract audits by leading firms"
       ],
-      color: "from-slate-600 to-slate-700"
+      color: "from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white"
     },
     {
       icon: ZapIcon,
@@ -63,7 +63,7 @@ export default function Features() {
         "Real-time confirmation",
         "High-frequency trading support"
       ],
-      color: "from-slate-500 to-slate-600"
+      color: "from-slate-100 to-slate-200 dark:from-slate-500 dark:to-slate-600 text-slate-800 dark:text-white"
     },
     {
       icon: GlobeIcon,
@@ -76,7 +76,7 @@ export default function Features() {
         "24/7 customer support",
         "Regulatory compliance built-in"
       ],
-      color: "from-slate-700 to-slate-800"
+      color: "from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 text-slate-800 dark:text-white"
     },
     {
       icon: CodeIcon,
@@ -89,7 +89,7 @@ export default function Features() {
         "Sandbox environment",
         "Webhook support for real-time updates"
       ],
-      color: "from-slate-600 to-slate-700"
+      color: "from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white"
     },
     {
       icon: CpuChipIcon,
@@ -102,7 +102,7 @@ export default function Features() {
         "Risk assessment algorithms",
         "Predictive analytics dashboard"
       ],
-      color: "from-slate-500 to-slate-600"
+      color: "from-slate-100 to-slate-200 dark:from-slate-500 dark:to-slate-600 text-slate-800 dark:text-white"
     },
     {
       icon: ChartBarIcon,
@@ -115,7 +115,7 @@ export default function Features() {
         "Export capabilities",
         "Compliance reporting automation"
       ],
-      color: "from-slate-700 to-slate-800"
+      color: "from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 text-slate-800 dark:text-white"
     }
   ]
 
@@ -159,9 +159,9 @@ export default function Features() {
             className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-20"
           >
             {techSpecs.map((spec, index) => (
-              <div key={spec.label} className="text-center p-6 bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl">
-                <div className="text-2xl font-bold text-white mb-2">{spec.value}</div>
-                <div className="text-dark-400 text-sm">{spec.label}</div>
+              <div key={spec.label} className="text-center p-6 bg-white/50 dark:bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl">
+                <div className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">{spec.value}</div>
+                <div className="text-secondary-600 dark:text-dark-400 text-sm">{spec.label}</div>
               </div>
             ))}
           </motion.div>
@@ -174,18 +174,18 @@ export default function Features() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="group p-8 bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl hover:bg-dark-800/70 transition-all duration-300"
+                className="group p-8 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl hover:bg-white/90 dark:hover:bg-dark-800/70 transition-all duration-300"
               >
                 <div className={`inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br ${feature.color} mb-6 group-hover:scale-110 transition-transform duration-300`}>
                   <feature.icon />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
-                <p className="text-dark-300 mb-6 leading-relaxed">{feature.description}</p>
+                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">{feature.title}</h3>
+                <p className="text-secondary-600 dark:text-dark-300 mb-6 leading-relaxed">{feature.description}</p>
                 
                 <ul className="space-y-3">
                   {feature.details.map((detail, detailIndex) => (
-                    <li key={detailIndex} className="flex items-center text-dark-400">
+                    <li key={detailIndex} className="flex items-center text-secondary-600 dark:text-dark-400">
                       <div className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0" />
                       <span className="text-sm">{detail}</span>
                     </li>
@@ -200,53 +200,53 @@ export default function Features() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="bg-gradient-to-r from-slate-800/20 to-slate-700/20 border border-primary-500/20 rounded-2xl p-8 backdrop-blur-sm"
+            className="bg-gradient-to-r from-white/40 to-slate-100/40 dark:from-slate-800/20 dark:to-slate-700/20 border border-primary-500/20 rounded-2xl p-8 backdrop-blur-sm"
           >
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-white mb-4">
+              <h2 className="text-3xl font-bold text-secondary-900 dark:text-white mb-4">
                 Easy Integration
               </h2>
-              <p className="text-dark-300 max-w-2xl mx-auto">
+              <p className="text-secondary-600 dark:text-dark-300 max-w-2xl mx-auto">
                 Get started with Parinum in minutes with our simple APIs and comprehensive documentation.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-dark-800/50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">JavaScript SDK</h3>
-                <div className="bg-dark-900/50 rounded-lg p-4 font-mono text-sm text-green-400">
-                  <div className="text-dark-500">// Install Parinum SDK</div>
-                  <div className="text-blue-400">npm install</div> @parinum/sdk
+              <div className="bg-white/70 dark:bg-dark-800/50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">JavaScript SDK</h3>
+                <div className="bg-slate-50 dark:bg-dark-900/50 rounded-lg p-4 font-mono text-sm text-green-600 dark:text-green-400">
+                  <div className="text-secondary-500 dark:text-dark-500">{'// Install Parinum SDK'}</div>
+                  <div className="text-blue-600 dark:text-blue-400">npm install</div> @parinum/sdk
                   <br /><br />
-                  <div className="text-dark-500">// Initialize client</div>
-                  <div className="text-purple-400">const</div> parinum = <div className="text-yellow-400">new</div> <div className="text-blue-400">Parinum</div>(apiKey)
+                  <div className="text-secondary-500 dark:text-dark-500">{'// Initialize client'}</div>
+                  <div className="text-purple-600 dark:text-purple-400">const</div> parinum = <div className="text-yellow-600 dark:text-yellow-400">new</div> <div className="text-blue-600 dark:text-blue-400">Parinum</div>(apiKey)
                   <br />
-                  <div className="text-purple-400">const</div> payment = <div className="text-purple-400">await</div> parinum.<div className="text-blue-400">createEscrow</div>({'{'}
+                  <div className="text-purple-600 dark:text-purple-400">const</div> payment = <div className="text-purple-600 dark:text-purple-400">await</div> parinum.<div className="text-blue-600 dark:text-blue-400">createEscrow</div>({'{'}
                   <br />
-                  &nbsp;&nbsp;amount: <div className="text-orange-400">100</div>,
+                  &nbsp;&nbsp;amount: <div className="text-orange-600 dark:text-orange-400">100</div>,
                   <br />
-                  &nbsp;&nbsp;currency: <div className="text-green-400">'USD'</div>
+                  &nbsp;&nbsp;currency: <div className="text-green-600 dark:text-green-400">&apos;USD&apos;</div>
                   <br />
                   {'}'})
                 </div>
               </div>
 
-              <div className="bg-dark-800/50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">REST API</h3>
-                <div className="bg-dark-900/50 rounded-lg p-4 font-mono text-sm text-green-400">
-                  <div className="text-blue-400">POST</div> /api/v1/payments
+              <div className="bg-white/70 dark:bg-dark-800/50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">REST API</h3>
+                <div className="bg-slate-50 dark:bg-dark-900/50 rounded-lg p-4 font-mono text-sm text-green-600 dark:text-green-400">
+                  <div className="text-blue-600 dark:text-blue-400">POST</div> /api/v1/payments
                   <br />
-                  <div className="text-yellow-400">Authorization:</div> Bearer {'{'}token{'}'}
+                  <div className="text-yellow-600 dark:text-yellow-400">Authorization:</div> Bearer {'{'}token{'}'}
                   <br />
-                  <div className="text-yellow-400">Content-Type:</div> application/json
+                  <div className="text-yellow-600 dark:text-yellow-400">Content-Type:</div> application/json
                   <br /><br />
                   {'{'}
                   <br />
-                  &nbsp;&nbsp;<div className="text-blue-400">"amount"</div>: <div className="text-orange-400">100</div>,
+                  &nbsp;&nbsp;<div className="text-blue-600 dark:text-blue-400">&quot;amount&quot;</div>: <div className="text-orange-600 dark:text-orange-400">100</div>,
                   <br />
-                  &nbsp;&nbsp;<div className="text-blue-400">"currency"</div>: <div className="text-green-400">"USD"</div>,
+                  &nbsp;&nbsp;<div className="text-blue-600 dark:text-blue-400">&quot;currency&quot;</div>: <div className="text-green-600 dark:text-green-400">&quot;USD&quot;</div>,
                   <br />
-                  &nbsp;&nbsp;<div className="text-blue-400">"recipient"</div>: <div className="text-green-400">"0x..."</div>
+                  &nbsp;&nbsp;<div className="text-blue-600 dark:text-blue-400">&quot;recipient&quot;</div>: <div className="text-green-600 dark:text-green-400">&quot;0x...&quot;</div>
                   <br />
                   {'}'}
                 </div>

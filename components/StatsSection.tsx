@@ -92,7 +92,7 @@ function CountUp({ end, duration = 2000, prefix = '', suffix = '', decimals = 0 
   }
 
   return (
-    <div ref={ref} className="font-bold text-3xl md:text-4xl text-white">
+    <div ref={ref} className="font-bold text-3xl md:text-4xl text-secondary-900 dark:text-white">
       {prefix}{formatNumber(count)}{suffix}
     </div>
   )
@@ -152,7 +152,7 @@ export default function StatsSection() {
   ]
 
   return (
-    <section className="py-24 relative overflow-hidden bg-dark-900/50">
+    <section className="py-24 relative overflow-hidden bg-transparent dark:bg-dark-900/50">
       {/* Background Elements */}
       <div className="absolute inset-0">
         <div className="absolute top-20 left-20 w-72 h-72 bg-primary-500/10 rounded-full blur-3xl animate-pulse" />
@@ -177,7 +177,7 @@ export default function StatsSection() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold text-white mb-6"
+            className="text-3xl md:text-5xl font-bold text-secondary-900 dark:text-white mb-6"
           >
             Trusted by Millions
             <span className="bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent"> Worldwide</span>
@@ -188,7 +188,7 @@ export default function StatsSection() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             viewport={{ once: true }}
-            className="text-xl text-dark-300 max-w-3xl mx-auto"
+            className="text-xl text-secondary-600 dark:text-dark-300 max-w-3xl mx-auto"
           >
             Our platform continues to grow and evolve, serving users across the globe 
             with unmatched security, speed, and reliability.
@@ -204,7 +204,7 @@ export default function StatsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="group relative p-8 rounded-2xl border border-primary-500/20 bg-dark-800/30 backdrop-blur-sm hover:bg-dark-800/50 transition-all duration-300"
+              className="group relative p-8 rounded-2xl border border-primary-500/20 bg-white/70 dark:bg-dark-800/30 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-dark-800/50 transition-all duration-300"
             >
               {/* Icon */}
               <div className={`inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br ${stat.color} mb-6 group-hover:scale-110 transition-transform duration-300`}>
@@ -221,8 +221,8 @@ export default function StatsSection() {
 
               {/* Label and Description */}
               <div className="mt-4">
-                <h3 className="text-lg font-semibold text-white mb-2">{stat.label}</h3>
-                <p className="text-dark-400 text-sm">{stat.description}</p>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-2">{stat.label}</h3>
+                <p className="text-secondary-600 dark:text-dark-400 text-sm">{stat.description}</p>
               </div>
 
               {/* Hover Effect */}
@@ -241,10 +241,10 @@ export default function StatsSection() {
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             <div className="text-center md:text-left">
-              <h3 className="text-2xl font-bold text-white mb-2">
+              <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">
                 Enterprise Grade Security
               </h3>
-              <p className="text-dark-300">
+              <p className="text-secondary-600 dark:text-dark-300">
                 Audited by top security firms and trusted by enterprises worldwide.
               </p>
             </div>
@@ -254,7 +254,7 @@ export default function StatsSection() {
                 <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-2 mx-auto">
                   <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
                 </div>
-                <span className="text-sm text-dark-400">99.9% Uptime</span>
+                <span className="text-sm text-secondary-600 dark:text-dark-400">99.9% Uptime</span>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-2 mx-auto">
@@ -262,7 +262,7 @@ export default function StatsSection() {
                     <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                   </svg>
                 </div>
-                <span className="text-sm text-dark-400">SOC 2 Compliant</span>
+                <span className="text-sm text-secondary-600 dark:text-dark-400">SOC 2 Compliant</span>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mb-2 mx-auto">
@@ -270,16 +270,16 @@ export default function StatsSection() {
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                 </div>
-                <span className="text-sm text-dark-400">Audited Smart Contracts</span>
+                <span className="text-sm text-secondary-600 dark:text-dark-400">Audited Smart Contracts</span>
               </div>
             </div>
 
             <div className="text-center md:text-right">
               <div className="flex justify-center md:justify-end items-center space-x-2 mb-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-white font-medium">All Systems Operational</span>
+                <span className="text-secondary-900 dark:text-white font-medium">All Systems Operational</span>
               </div>
-              <p className="text-dark-400 text-sm">
+              <p className="text-secondary-600 dark:text-dark-400 text-sm">
                 Real-time status monitoring and incident response
               </p>
             </div>

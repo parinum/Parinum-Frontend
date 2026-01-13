@@ -31,16 +31,16 @@ export default function Footer() {
   ]
 
   return (
-    <footer className="bg-dark-900/80 backdrop-blur-sm border-t border-primary-500/20">
+    <footer className="bg-white/80 dark:bg-dark-900/80 backdrop-blur-sm border-t border-primary-500/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-1 mb-4">
               <Image src={ParinumLogo} alt="Parinum logo" width={40} height={40} priority />
-              <span className="text-xl font-bold text-white font-sans">Parinum</span>
+              <span className="text-xl font-bold text-secondary-900 dark:text-white font-sans">Parinum</span>
             </div>
-            <p className="text-dark-400 mb-6 max-w-md">
+            <p className="text-secondary-600 dark:text-dark-400 mb-6 max-w-md">
               Secure, decentralized payment solutions powered by blockchain technology. 
               Building the future of financial transactions.
             </p>
@@ -51,7 +51,7 @@ export default function Footer() {
                   href={social.href}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
-                  className="w-10 h-10 bg-dark-800 hover:bg-primary-600 rounded-lg flex items-center justify-center text-dark-400 hover:text-white transition-all duration-200"
+                  className="w-10 h-10 bg-slate-200 dark:bg-dark-800 hover:bg-primary-500 dark:hover:bg-primary-600 rounded-lg flex items-center justify-center text-secondary-600 dark:text-dark-400 hover:text-white dark:hover:text-white transition-all duration-200"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -67,15 +67,8 @@ export default function Footer() {
         {/* Bottom Section */}
         <div className="border-t border-primary-500/20 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-dark-400 text-sm mb-4 md:mb-0">
+            <div className="text-secondary-500 dark:text-dark-400 text-sm mb-4 md:mb-0">
               © 2025 Parinum. All rights reserved.
-            </div>
-            <div className="flex items-center space-x-6 text-sm text-dark-400">
-              <span>Built with 💙 for Web3</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span>All systems operational</span>
-              </div>
             </div>
           </div>
         </div>

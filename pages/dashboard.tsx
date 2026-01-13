@@ -115,7 +115,7 @@ export default function Dashboard() {
               className="text-center py-20"
             >
               <div className="max-w-md mx-auto">
-                <div className="w-24 h-24 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center mx-auto mb-8">
+                <div className="w-24 h-24 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center mx-auto mb-8">
                   <WalletIcon />
                 </div>
                 <h1 className="text-3xl font-bold text-white mb-4">
@@ -128,7 +128,7 @@ export default function Dashboard() {
                   onClick={connectWallet}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-8 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="px-8 py-3 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   Connect Wallet
                 </motion.button>
@@ -175,31 +175,31 @@ export default function Dashboard() {
                 transition={{ duration: 0.6, delay: 0.1 }}
                 className="grid grid-cols-1 md:grid-cols-3 gap-6"
               >
-                <div className="col-span-1 md:col-span-2 p-8 bg-gradient-to-br from-slate-800/20 to-slate-700/20 border border-slate-500/30 rounded-2xl backdrop-blur-sm">
+                <div className="col-span-1 md:col-span-2 p-8 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-white">Total Balance</h2>
+                    <h2 className="text-xl font-semibold text-secondary-900 dark:text-white">Total Balance</h2>
                     <TrendingUpIcon />
                   </div>
                   <div className="space-y-2">
-                    <div className="text-4xl font-bold text-white">${balance.usd.toLocaleString()}</div>
-                    <div className="text-dark-300">{balance.eth} ETH</div>
-                    <div className="flex items-center text-green-400 text-sm">
+                    <div className="text-4xl font-bold text-secondary-900 dark:text-white">${balance.usd.toLocaleString()}</div>
+                    <div className="text-secondary-600 dark:text-dark-300">{balance.eth} ETH</div>
+                    <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
                       <ArrowUpIcon />
                       <span className="ml-1">+5.2% (24h)</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm">
-                  <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                <div className="p-6 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm">
+                  <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">Quick Actions</h3>
                   <div className="space-y-3">
-                    <button className="w-full p-3 bg-primary-600/20 hover:bg-primary-600/30 text-primary-400 rounded-xl transition-colors duration-200">
+                    <button className="w-full p-3 bg-primary-100 hover:bg-primary-200 dark:bg-primary-600/20 dark:hover:bg-primary-600/30 text-primary-700 dark:text-primary-400 rounded-xl transition-colors duration-200">
                       Buy Crypto
                     </button>
-                    <button className="w-full p-3 bg-secondary-600/20 hover:bg-secondary-600/30 text-secondary-400 rounded-xl transition-colors duration-200">
+                    <button className="w-full p-3 bg-secondary-100 hover:bg-secondary-200 dark:bg-secondary-600/20 dark:hover:bg-secondary-600/30 text-secondary-700 dark:text-secondary-400 rounded-xl transition-colors duration-200">
                       Stake Tokens
                     </button>
-                    <button className="w-full p-3 bg-dark-600/50 hover:bg-dark-600/70 text-dark-300 rounded-xl transition-colors duration-200">
+                    <button className="w-full p-3 bg-slate-100 hover:bg-slate-200 dark:bg-dark-600/50 dark:hover:bg-dark-600/70 text-secondary-600 dark:text-dark-300 rounded-xl transition-colors duration-200">
                       View Analytics
                     </button>
                   </div>
@@ -211,24 +211,24 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="p-8 bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm"
+                className="p-8 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm"
               >
-                <h2 className="text-xl font-semibold text-white mb-6">Portfolio</h2>
+                <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-6">Portfolio</h2>
                 <div className="space-y-4">
                   {portfolioData.map((asset, index) => (
-                    <div key={asset.name} className="flex items-center justify-between p-4 bg-dark-700/30 rounded-xl">
+                    <div key={asset.name} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-dark-700/30 rounded-xl">
                       <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center text-white font-bold">
+                        <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center text-slate-800 dark:text-white font-bold">
                           {asset.name.charAt(0)}
                         </div>
                         <div>
-                          <div className="text-white font-medium">{asset.name}</div>
-                          <div className="text-dark-400 text-sm">{asset.balance} {asset.name}</div>
+                          <div className="text-secondary-900 dark:text-white font-medium">{asset.name}</div>
+                          <div className="text-secondary-600 dark:text-dark-400 text-sm">{asset.balance} {asset.name}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-white font-medium">${asset.value.toLocaleString()}</div>
-                        <div className={`flex items-center text-sm ${asset.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <div className="text-secondary-900 dark:text-white font-medium">${asset.value.toLocaleString()}</div>
+                        <div className={`flex items-center text-sm ${asset.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                           {asset.change >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
                           <span className="ml-1">{Math.abs(asset.change)}%</span>
                         </div>
@@ -243,9 +243,9 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
-                className="p-8 bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm"
+                className="p-8 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-2xl backdrop-blur-sm"
               >
-                <h2 className="text-xl font-semibold text-white mb-6">Recent Transactions</h2>
+                <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-6">Recent Transactions</h2>
                 <div className="space-y-4">
                   {recentTransactions.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between p-4 bg-dark-700/30 rounded-xl">

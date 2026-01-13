@@ -1,0 +1,98 @@
+{
+  "1": {
+    "name": "ethereum",
+    "chainId": 1,
+    "timestamp": "2026-01-13T10:31:11.606Z",
+    "DevWallet": "0x4B131D8f1A6172C1D022B825fCae375122AC207e",
+    "Timelock": "0xB7b8738297d4a91F08d9Ff18E4bA5eEDB21522C2",
+    "PRM": "0xcdb2dd3D8b1C8f2b5f8ef735edd6F3eC53E896D3",
+    "Governor": "0x1b53D58fFC6e69e6589a1A42eDf363584c0760f7",
+    "MainnetGovernanceRelay": "0x10FcD639d832188e94c50eD1C4C3A9F6403a0a64",
+    "FeeCollector": "0x0b4868Dbdfb981a4b26eE5d670739Bc03b16cd9c",
+    "Factory": "0x6706EB14Aa62f96F605A8492063c810C2a411e9d",
+    "Clone": "0x71498Ed008E4C968551e26eB4B803631241B5D26",
+    "RewardsPool": "0x3b0f2B6485b9C16B28b268a2CEef5BD7231FFB4d",
+    "PRMICO": "0x0be43FA2FB20662D0a086c7596679dd8CCac65f9"
+  },
+  "10": {
+    "name": "optimism",
+    "chainId": 10,
+    "timestamp": "2026-01-12T02:52:57.606Z",
+    "GovernanceReceiver": "0x45663dC77256720806C84d10503Ee1780BA95106",
+    "FeeCollector": "0x2D893fc4bD1Add90E0D957C5e2Ef3b82a71c55b4",
+    "Factory": "0xA37105D3879c3F9Fe65ab498406b6624Ed683b42",
+    "Clone": "0xEBdb4a0143882Bd10B6F5d8a95F00ad2a7B3e332"
+  },
+  "25": {
+    "name": "cronos",
+    "chainId": 25,
+    "timestamp": "2026-01-12T02:52:48.157Z",
+    "GovernanceReceiver": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "FeeCollector": "0x851356ae760d987E095750cCeb3bC6014560891C",
+    "Factory": "0x95401dc811bb5740090279Ba06cfA8fcF6113778",
+    "Clone": "0x998abeb3E57409262aE5b751f60747921B33613E"
+  },
+  "56": {
+    "name": "bsc",
+    "chainId": 56,
+    "timestamp": "2026-01-13T10:31:20.961Z",
+    "GovernanceReceiver": "0x669528b2bCd1048873d70D03e45Bb08d0be4Dd62",
+    "FeeCollector": "0xc625004f6E8B9bCf5aa575c541e9215B001c4c6e",
+    "Factory": "0x9Aaa0B7600d370eED7E710D8C698D5E17c1baD9E",
+    "Clone": "0x8f25f99bC0341A9fc144E142Cf487cb0fFC4d088"
+  },
+  "130": {
+    "name": "unichain",
+    "chainId": 130,
+    "timestamp": "2026-01-12T02:53:02.277Z",
+    "GovernanceReceiver": "0x8bEe2037448F096900Fd9affc427d38aE6CC0350",
+    "FeeCollector": "0x942ED2fa862887Dc698682cc6a86355324F0f01e",
+    "Factory": "0xcC4c41415fc68B2fBf70102742A83cDe435e0Ca7",
+    "Clone": "0xa722bdA6968F50778B973Ae2701e90200C564B49"
+  },
+  "137": {
+    "name": "polygon",
+    "chainId": 137,
+    "timestamp": "2026-01-12T02:52:39.645Z",
+    "GovernanceReceiver": "0x43904D57F6a4a3336d895eD0A48a368726497D40",
+    "FeeCollector": "0x4A50B7fB2Abe8d49EA09507C4f05EBEC79405CcE",
+    "Factory": "0x9f0C55a2087297C896aFd5838E73F7Fbc9dd4372",
+    "Clone": "0x529177C4d0407223d4F671993970f7d1f3E0ac89"
+  },
+  "8453": {
+    "name": "base",
+    "chainId": 8453,
+    "timestamp": "2026-01-12T02:52:20.239Z",
+    "GovernanceReceiver": "0xe9d0f7cBa0Bd88E7ACF838fd47ecf4Ef2A3eD41C",
+    "FeeCollector": "0x079F0da19085A2E1B222E3b5B41D818C1c3D4243",
+    "Factory": "0x5951887E444A1DFe8602D390a5E283aC0cCCe24A",
+    "Clone": "0x69478eCdF5ad229673Bd7A878108BeE20b04dCBc"
+  },
+  "42161": {
+    "name": "arbitrum",
+    "chainId": 42161,
+    "timestamp": "2026-01-13T10:31:17.623Z",
+    "GovernanceReceiver": "0xc779AA542377CB222067a3AfEe533cE12BfED6Ca",
+    "FeeCollector": "0xA3245fAe3e3d7C92591C175d19c2FD7D1Fe58677",
+    "Factory": "0x9Aaa0B7600d370eED7E710D8C698D5E17c1baD9E",
+    "Clone": "0xdd4876B394ecb7dE4eB33f7168235c61d3dEBEa8"
+  },
+  "43114": {
+    "name": "avalanche",
+    "chainId": 43114,
+    "timestamp": "2026-01-12T02:52:44.338Z",
+    "GovernanceReceiver": "0x69eB226983E10D7318816134cd44BE3023dC74cd",
+    "FeeCollector": "0x29e95B6bbCd23fbF66e9d8ee2029564A734560De",
+    "Factory": "0x3358F984e9B3CBBe976eEFE9B6fb92a214162932",
+    "Clone": "0x3Aa338c8d5E6cefE95831cD0322b558677abA0f1"
+  },
+  "59144": {
+    "name": "linea",
+    "chainId": 59144,
+    "timestamp": "2026-01-12T02:52:52.949Z",
+    "GovernanceReceiver": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+    "FeeCollector": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+    "Factory": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
+    "Clone": "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E"
+  }
+}

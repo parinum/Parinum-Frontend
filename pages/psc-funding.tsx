@@ -10,6 +10,7 @@ import {
   calculateIcoPrice,
   initProvider 
 } from '@/lib/functions'
+import { ethers } from 'ethers'
 
 // Icons (removed dollar/coins icon per request)
 
@@ -31,12 +32,18 @@ const GiftIcon = () => (
   </svg>
 )
 
+const InfoIcon = ({ className }: { className?: string }) => (
+  <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
 export default function PSCFunding() {
   const router = useRouter()
   
   // Form states
   const [ethAmount, setEthAmount] = useState('')
-  const [refererAddress, setRefererAddress] = useState('')
+  const [multiplier, setMultiplier] = useState(1.0)
   const [estimatedPSC, setEstimatedPSC] = useState('0')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -96,13 +103,15 @@ export default function PSCFunding() {
     const calculateTokens = async () => {
       if (ethAmount && parseFloat(ethAmount) > 0) {
         const pscAmount = await calculateIcoPrice(ethAmount)
-        setEstimatedPSC(pscAmount)
+        // Apply multiplier to estimation
+        const multiplied = parseFloat(pscAmount) * multiplier
+        setEstimatedPSC(multiplied.toString())
       } else {
         setEstimatedPSC('0')
       }
     }
     calculateTokens()
-  }, [ethAmount])
+  }, [ethAmount, multiplier])
 
   // Initial data fetch
   useEffect(() => {
@@ -122,12 +131,11 @@ export default function PSCFunding() {
     setMessage('')
 
     try {
-      const result = await buyPSCTokens(refererAddress, ethAmount)
+      const result = await buyPSCTokens(ethers.ZeroAddress, ethAmount)
       
       if (result.success) {
         setMessage(`Successfully purchased PSC tokens! Transaction: ${result.txHash}`)
         setEthAmount('')
-        setRefererAddress('')
         // Refresh data
         fetchIcoInfo()
         fetchAccountInfo()
@@ -195,10 +203,10 @@ export default function PSCFunding() {
             className="text-center mb-12"
           >
             {/* Removed header icon per request */}
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-secondary-900 dark:text-white mb-4">
               PRM Token Funding
             </h1>
-            <p className="text-xl text-dark-300 max-w-3xl mx-auto">
+            <p className="text-xl text-secondary-600 dark:text-dark-300 max-w-3xl mx-auto">
               Participate in the PRM Initial Coin Offering and help build the future of decentralized payments
             </p>
           </motion.div>
@@ -210,43 +218,34 @@ export default function PSCFunding() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
           >
-            <div className="p-6 bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
+            <div className="p-6 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
               <div className="flex items-center mb-3">
-                <h3 className="text-lg font-semibold text-white">Progress</h3>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">ETH Raised</h3>
               </div>
-              <div className="mb-2">
-                <div className="flex justify-between text-sm text-dark-300 mb-1">
-                  <span>Raised: {parseFloat(icoInfo.weightedETHRaised).toFixed(2)} ETH</span>
-                  <span>Goal: {parseFloat(icoInfo.poolETH).toFixed(0)} ETH</span>
-                </div>
-                <div className="w-full bg-dark-700 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-slate-600 to-slate-700 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-white">{progressPercentage.toFixed(1)}%</p>
+              <p className="text-2xl font-bold text-secondary-900 dark:text-white">
+                {parseFloat(icoInfo.weightedETHRaised).toFixed(2)} ETH
+              </p>
+              <p className="text-sm text-secondary-600 dark:text-dark-300 mt-1">Total contribution</p>
             </div>
 
-            <div className="p-6 bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
+            <div className="p-6 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
               <div className="flex items-center mb-3">
-                <h3 className="text-lg font-semibold text-white">Time Left</h3>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">Time Left</h3>
               </div>
-              <p className="text-2xl font-bold text-white">{formatTimeRemaining()}</p>
-              <p className="text-sm text-dark-300 mt-1">
+              <p className="text-2xl font-bold text-secondary-900 dark:text-white">{formatTimeRemaining()}</p>
+              <p className="text-sm text-secondary-600 dark:text-dark-300 mt-1">
                 {icoEnded ? 'Claiming period active' : 'Funding period active'}
               </p>
             </div>
 
-            <div className="p-6 bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
+            <div className="p-6 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
               <div className="flex items-center mb-3">
-                <h3 className="text-lg font-semibold text-white">Token Pool</h3>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">Token Pool</h3>
               </div>
-              <p className="text-2xl font-bold text-white">
-                {parseFloat(icoInfo.poolPSC).toLocaleString()} PRM
+              <p className="text-2xl font-bold text-secondary-900 dark:text-white">
+                40,000,000 PRM
               </p>
-              <p className="text-sm text-dark-300 mt-1">Available for distribution</p>
+              <p className="text-sm text-secondary-600 dark:text-dark-300 mt-1">Available for distribution</p>
             </div>
           </motion.div>
 
@@ -257,16 +256,16 @@ export default function PSCFunding() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="p-8 bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-2xl"
+              className="p-8 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-2xl"
             >
-              <h2 className="text-2xl font-bold text-white mb-6">
+              <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-6">
                 {icoEnded ? 'ICO Ended - Claim Your Tokens' : 'Buy PRM Tokens'}
               </h2>
 
               {!icoEnded ? (
                 <form onSubmit={handleBuyTokens} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-dark-300 mb-2">
+                    <label className="block text-sm font-medium text-secondary-600 dark:text-dark-300 mb-2">
                       ETH Amount
                     </label>
                     <input
@@ -275,34 +274,57 @@ export default function PSCFunding() {
                       min="0"
                       value={ethAmount}
                       onChange={(e) => setEthAmount(e.target.value)}
-                      className="w-full px-4 py-3 bg-dark-700/50 border border-slate-500/30 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-200"
+                      className="w-full px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-slate-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-200"
                       placeholder="0.0"
                       required
                     />
-                    {estimatedPSC !== '0' && (
-                      <p className="text-sm text-slate-400 mt-1">
-                        ≈ {parseFloat(estimatedPSC).toLocaleString()} PRM tokens
-                      </p>
-                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-dark-300 mb-2">
-                      Referrer Address (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={refererAddress}
-                      onChange={(e) => setRefererAddress(e.target.value)}
-                      className="w-full px-4 py-3 bg-dark-700/50 border border-slate-500/30 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-slate-500/50 focus:border-slate-500/50 transition-all duration-200"
-                      placeholder="0x..."
-                    />
+                  <div className="mb-6">
+                    <div className="flex justify-between mb-2">
+                       <label className="flex items-center text-sm font-medium text-secondary-600 dark:text-dark-300">
+                        Multiplier
+                        <div className="group relative flex items-center ml-2">
+                          <InfoIcon className="w-4 h-4 text-slate-400 cursor-help" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl text-xs text-secondary-600 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-justify">
+                            Early contributors can choose to use a multiplier which increases their weighted contribution in exchange for a longer lock-up period (linear relationship). A 1x multiplier will have no lockup period, whereas a 1.8x multiplier will have a 144 day lock up period.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-200 dark:border-t-slate-600"></div>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        type="range"
+                        min="1"
+                        max="1.8"
+                        step="0.1"
+                        value={multiplier}
+                        onChange={(e) => setMultiplier(parseFloat(e.target.value))}
+                        className="w-full cursor-pointer accent-slate-500"
+                      />
+                       <input
+                        type="number"
+                        min="1"
+                        max="1.8"
+                        step="0.1"
+                        value={multiplier}
+                        onChange={(e) => {
+                          let val = parseFloat(e.target.value);
+                          if(isNaN(val)) val = 1;
+                          if (val > 1.8) val = 1.8;
+                          if (val < 1) val = 1;
+                          setMultiplier(val);
+                        }}
+                        className="w-20 px-3 py-2 bg-slate-100 dark:bg-dark-700/50 border border-slate-500/30 rounded-xl text-secondary-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-slate-500/50"
+                      />
+                    </div>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading || !ethAmount}
-                    className="w-full px-6 py-4 bg-gradient-to-r from-slate-600 to-slate-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    className="w-full px-6 py-4 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
                     {isLoading ? (
                       <>
@@ -385,25 +407,12 @@ export default function PSCFunding() {
                 <h3 className="text-lg font-semibold text-white mb-4">ICO Information</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-dark-300">Total PRM Pool:</span>
-                    <span className="text-white font-semibold">{parseFloat(icoInfo.poolPSC).toLocaleString()} PRM</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-dark-300">ETH Target:</span>
                     <span className="text-white font-semibold">{parseFloat(icoInfo.poolETH).toFixed(0)} ETH</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-dark-300">ETH Raised:</span>
                     <span className="text-white font-semibold">{parseFloat(icoInfo.weightedETHRaised).toFixed(2)} ETH</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-dark-300">Current Rate:</span>
-                    <span className="text-white font-semibold">
-                      {icoInfo.poolETH !== '0' 
-                        ? `1 ETH = ${(parseFloat(icoInfo.poolPSC) / parseFloat(icoInfo.poolETH)).toFixed(0)} PRM`
-                        : 'Calculating...'
-                      }
-                    </span>
                   </div>
                 </div>
               </div>
@@ -418,15 +427,11 @@ export default function PSCFunding() {
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full mr-2 mt-2 flex-shrink-0"></span>
-                    <span>Referrer bonuses apply for valid referrer addresses</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full mr-2 mt-2 flex-shrink-0"></span>
                     <span>Tokens can be claimed after the funding period ends</span>
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full mr-2 mt-2 flex-shrink-0"></span>
-                    <span>Vesting schedule may apply to claimed tokens</span>
+                    <span>Vesting schedule will be linear over one year</span>
                   </li>
                 </ul>
               </div>

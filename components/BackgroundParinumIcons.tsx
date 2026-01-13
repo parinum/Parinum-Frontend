@@ -192,15 +192,11 @@ export default function BackgroundParinumIcons() {
 							animation: `wobbleSpin ${icon.duration}s ease-in-out infinite alternate`,
 							animationDelay: `${icon.delay}s`,
 							// Per-icon motion variables
-							// @ts-expect-error CSS custom properties
 							'--base-rot': `${icon.rotate}deg`,
-							// @ts-expect-error CSS custom properties
 							'--jitter-x': `${icon.jitterX}px`,
-							// @ts-expect-error CSS custom properties
 							'--jitter-y': `${icon.jitterY}px`,
-							// @ts-expect-error CSS custom properties
 							'--rot-amp': `${icon.rotAmp}deg`,
-						}}
+						} as any}
 					/>
 				</div>
 			))}

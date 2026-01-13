@@ -73,23 +73,19 @@ export default function About() {
   const values = [
     {
       title: "Security First",
-      description: "We prioritize security above all else, implementing military-grade encryption and rigorous security audits.",
-      icon: "🔒"
+      description: "We prioritize security above all else, implementing military-grade encryption and rigorous security audits."
     },
     {
       title: "Innovation",
-      description: "We constantly push the boundaries of what's possible in blockchain and payment technology.",
-      icon: "💡"
+      description: "We constantly push the boundaries of what's possible in blockchain and payment technology."
     },
     {
       title: "Transparency",
-      description: "We believe in open communication and transparent operations with our users and partners.",
-      icon: "🔍"
+      description: "We believe in open communication and transparent operations with our users and partners."
     },
     {
       title: "Accessibility",
-      description: "We're building technology that's accessible to everyone, regardless of technical expertise.",
-      icon: "🌍"
+      description: "We're building technology that's accessible to everyone, regardless of technical expertise."
     }
   ]
 
@@ -111,15 +107,15 @@ export default function About() {
             transition={{ duration: 0.8 }}
             className="text-center mb-20"
           >
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm font-medium mb-6">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-primary-100 dark:bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-400 text-sm font-medium mb-6">
               About Parinum
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold text-secondary-900 dark:text-white mb-6">
               Building the Future of
-              <span className="bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent"> Digital Payments</span>
+              <span className="bg-gradient-to-r from-primary-600 to-secondary-600 dark:from-primary-400 dark:to-secondary-400 bg-clip-text text-transparent"> Digital Payments</span>
             </h1>
-            <p className="text-xl text-dark-300 max-w-3xl mx-auto">
-              We're on a mission to make secure, fast, and accessible digital payments 
+            <p className="text-xl text-secondary-600 dark:text-dark-300 max-w-3xl mx-auto">
+              We&apos;re on a mission to make secure, fast, and accessible digital payments 
               available to everyone, everywhere through the power of blockchain technology.
             </p>
           </motion.div>
@@ -133,8 +129,8 @@ export default function About() {
           >
             {stats.map((stat, index) => (
               <div key={stat.label} className="text-center">
-                <div className="text-4xl font-bold text-white mb-2">{stat.value}</div>
-                <div className="text-dark-400">{stat.label}</div>
+                <div className="text-4xl font-bold text-secondary-900 dark:text-white mb-2">{stat.value}</div>
+                <div className="text-secondary-600 dark:text-dark-400">{stat.label}</div>
               </div>
             ))}
           </motion.div>
@@ -146,20 +142,20 @@ export default function About() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-20"
           >
-            <div className="p-8 bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl">
-              <h2 className="text-3xl font-bold text-white mb-6">Our Mission</h2>
-              <p className="text-dark-300 leading-relaxed">
+            <div className="p-8 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl">
+              <h2 className="text-3xl font-bold text-secondary-900 dark:text-white mb-6">Our Mission</h2>
+              <p className="text-secondary-600 dark:text-dark-300 leading-relaxed">
                 To democratize access to secure, fast, and affordable digital payments by 
                 leveraging blockchain technology. We believe that everyone deserves access 
                 to financial tools that are transparent, secure, and user-friendly.
               </p>
             </div>
-            <div className="p-8 bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl">
-              <h2 className="text-3xl font-bold text-white mb-6">Our Vision</h2>
-              <p className="text-dark-300 leading-relaxed">
+            <div className="p-8 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl">
+              <h2 className="text-3xl font-bold text-secondary-900 dark:text-white mb-6">Our Vision</h2>
+              <p className="text-secondary-600 dark:text-dark-300 leading-relaxed">
                 A world where digital payments are as simple as sending a text message, 
                 as secure as a bank vault, and as accessible as the internet itself. 
-                We're building the infrastructure for the next generation of finance.
+                We&apos;re building the infrastructure for the next generation of finance.
               </p>
             </div>
           </motion.div>
@@ -171,13 +167,12 @@ export default function About() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="mb-20"
           >
-            <h2 className="text-3xl font-bold text-white text-center mb-12">Our Values</h2>
+            <h2 className="text-3xl font-bold text-secondary-900 dark:text-white text-center mb-12">Our Values</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {values.map((value, index) => (
-                <div key={value.title} className="p-6 bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl text-center">
-                  <div className="text-4xl mb-4">{value.icon}</div>
-                  <h3 className="text-xl font-semibold text-white mb-3">{value.title}</h3>
-                  <p className="text-dark-400 text-sm">{value.description}</p>
+                <div key={value.title} className="p-6 bg-white/70 dark:bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl text-center">
+                  <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-3">{value.title}</h3>
+                  <p className="text-secondary-600 dark:text-dark-400 text-sm">{value.description}</p>
                 </div>
               ))}
             </div>
@@ -190,16 +185,16 @@ export default function About() {
             transition={{ duration: 0.8, delay: 0.5 }}
             className="mb-20"
           >
-            <h2 className="text-3xl font-bold text-white text-center mb-12">Our Journey</h2>
+            <h2 className="text-3xl font-bold text-secondary-900 dark:text-white text-center mb-12">Our Journey</h2>
             <div className="space-y-8">
               {timeline.map((event, index) => (
                 <div key={event.year} className="flex items-start space-x-8">
-                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 rounded-full flex items-center justify-center text-slate-800 dark:text-white font-bold text-lg">
                     {event.year}
                   </div>
-                  <div className="flex-grow p-6 bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl">
-                    <h3 className="text-xl font-semibold text-white mb-2">{event.title}</h3>
-                    <p className="text-dark-300">{event.description}</p>
+                  <div className="flex-grow p-6 bg-white/70 dark:bg-dark-800/30 backdrop-blur-sm border border-primary-500/20 rounded-xl">
+                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">{event.title}</h3>
+                    <p className="text-secondary-600 dark:text-dark-300">{event.description}</p>
                   </div>
                 </div>
               ))}
@@ -213,21 +208,21 @@ export default function About() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="mb-20"
           >
-            <h2 className="text-3xl font-bold text-white text-center mb-12">Leadership Team</h2>
+            <h2 className="text-3xl font-bold text-secondary-900 dark:text-white text-center mb-12">Leadership Team</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {team.map((member, index) => (
                 <div key={member.name} className="text-center">
-                  <div className="w-32 h-32 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full mx-auto mb-6 flex items-center justify-center">
+                  <div className="w-32 h-32 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 rounded-full mx-auto mb-6 flex items-center justify-center">
                     <UserIcon />
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{member.name}</h3>
-                  <p className="text-primary-400 font-medium mb-3">{member.role}</p>
-                  <p className="text-dark-400 text-sm leading-relaxed">{member.bio}</p>
+                  <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">{member.name}</h3>
+                  <p className="text-primary-600 dark:text-primary-400 font-medium mb-3">{member.role}</p>
+                  <p className="text-secondary-600 dark:text-dark-400 text-sm leading-relaxed">{member.bio}</p>
                   <div className="flex justify-center space-x-3 mt-4">
-                    <a href="#" className="w-8 h-8 bg-dark-700 hover:bg-dark-600 rounded-full flex items-center justify-center text-dark-400 hover:text-white transition-colors duration-200">
+                    <a href="#" className="w-8 h-8 bg-slate-200 hover:bg-slate-300 dark:bg-dark-700 dark:hover:bg-dark-600 rounded-full flex items-center justify-center text-secondary-600 hover:text-secondary-900 dark:text-dark-400 dark:hover:text-white transition-colors duration-200">
                       <TwitterIcon />
                     </a>
-                    <a href="#" className="w-8 h-8 bg-dark-700 hover:bg-dark-600 rounded-full flex items-center justify-center text-dark-400 hover:text-white transition-colors duration-200">
+                    <a href="#" className="w-8 h-8 bg-slate-200 hover:bg-slate-300 dark:bg-dark-700 dark:hover:bg-dark-600 rounded-full flex items-center justify-center text-secondary-600 hover:text-secondary-900 dark:text-dark-400 dark:hover:text-white transition-colors duration-200">
                       <LinkedInIcon />
                     </a>
                   </div>
@@ -241,11 +236,11 @@ export default function About() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            className="text-center bg-gradient-to-r from-slate-800/20 to-slate-700/20 border border-slate-500/20 rounded-2xl p-12 backdrop-blur-sm"
+            className="text-center bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-2xl p-12 backdrop-blur-sm"
           >
-            <h2 className="text-3xl font-bold text-white mb-6">Join Our Mission</h2>
-            <p className="text-dark-300 mb-8 max-w-2xl mx-auto">
-              We're always looking for talented individuals who share our passion for 
+            <h2 className="text-3xl font-bold text-secondary-900 dark:text-white mb-6">Join Our Mission</h2>
+            <p className="text-secondary-600 dark:text-dark-300 mb-8 max-w-2xl mx-auto">
+              We&apos;re always looking for talented individuals who share our passion for 
               building the future of digital payments. Explore career opportunities and 
               become part of our growing team.
             </p>
@@ -253,14 +248,14 @@ export default function About() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-3 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 View Open Positions
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 bg-dark-700 hover:bg-dark-600 text-white font-semibold rounded-xl transition-colors duration-200"
+                className="px-8 py-3 bg-secondary-900 hover:bg-secondary-800 dark:bg-dark-700 dark:hover:bg-dark-600 text-white font-semibold rounded-xl transition-colors duration-200"
               >
                 Contact Us
               </motion.button>

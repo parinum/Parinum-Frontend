@@ -37,10 +37,10 @@ export default function ParinumCards() {
               }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98, transition: { type: 'tween', duration: 0.08, ease: 'easeOut' } }}
-              className="p-6 rounded-xl border border-primary-500/20 bg-dark-800/40 backdrop-blur-sm hover:bg-dark-800/60 shadow-lg hover:shadow-xl transition-colors transition-shadow duration-200 will-change-transform"
+              className="p-6 rounded-xl border border-primary-500/20 bg-white/70 dark:bg-dark-800/40 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-dark-800/60 shadow-lg hover:shadow-xl transition-colors transition-shadow duration-200 will-change-transform"
             >
-              <h3 className="text-white font-semibold mb-2">{c.title}</h3>
-              <p className="text-dark-300 text-sm leading-relaxed">{c.description}</p>
+              <h3 className="text-secondary-900 dark:text-white font-semibold mb-2">{c.title}</h3>
+              <p className="text-secondary-600 dark:text-dark-300 text-sm leading-relaxed">{c.description}</p>
             </motion.div>
           ))}
         </div>

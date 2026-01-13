@@ -1,4 +1,16 @@
 import { ethers } from 'ethers'
+import { config } from './wagmiConfig'
+import { getConnectorClient } from '@wagmi/core'
+import {
+  GovernorContract__factory,
+  PRMICO__factory,
+  PRM__factory,
+  RewardsPool__factory,
+} from '@parinum/contracts/typechain-types'
+import {
+  getParinumFactoryInterface,
+  getParinumNetworkConfig,
+} from './parinum'
 
 // Lightweight in-memory cache with TTL to reduce repeated read calls
 class _Cache {
@@ -28,7 +40,7 @@ export interface PurchaseDetails {
   price: string
   collateral: string
   tokenAddress: string
-  status: 'created' | 'confirmed' | 'completed' | 'aborted'
+  status: 'inactive' | 'created' | 'confirmed' | 'failed'
   timestamp: Date
 }
 
@@ -95,59 +107,115 @@ export interface VotingPower {
 }
 
 // Contract addresses (replace with actual deployed addresses)
-export const contractAddresses = {
-  crowdfunder: "0x17f4B55A352Be71CC03856765Ad04147119Aa09B",
-  psc: "0x3Aa338c8d5E6cefE95831cD0322b558677abA0f1",
+const defaultContractAddresses = {
+  ico: "0x17f4B55A352Be71CC03856765Ad04147119Aa09B",
+  prm: "0x3Aa338c8d5E6cefE95831cD0322b558677abA0f1",
   rewardsPool: "0x27f7785b17c6B4d034094a1B16Bc928bD697f386",
   governor: "0x267fB71b280FB34B278CedE84180a9A9037C941b",
   timelock: "0x6858dF5365ffCbe31b5FE68D9E6ebB81321F7F86"
 }
 
+const getCoreAddresses = (chainId?: number | null) => {
+  const net = getParinumNetworkConfig(chainId || 1)
+  const envKey = net?.envKey
+  const pick = (key: string) =>
+    (envKey && process.env[`NEXT_PUBLIC_PARINUM_${key}_${envKey}`]?.trim()) ||
+    process.env[`NEXT_PUBLIC_PARINUM_${key}`]?.trim() ||
+    (defaultContractAddresses as any)[key.toLowerCase()] ||
+    ''
+
+  return {
+    ico: pick('ICO'),
+    prm: pick('PRM'),
+    rewardsPool: pick('REWARDS_POOL'),
+    governor: pick('GOVERNOR'),
+    timelock: pick('TIMELOCK'),
+  }
+}
+
+export const contractAddresses = {
+  crowdfunder: defaultContractAddresses.ico,
+  psc: defaultContractAddresses.prm,
+  rewardsPool: defaultContractAddresses.rewardsPool,
+  governor: defaultContractAddresses.governor,
+  timelock: defaultContractAddresses.timelock,
+}
+
 // Contract ABIs (simplified - you should import the full ABIs)
-const crowdfunderABI = [
-  "function buyPSC(address referer) external payable",
-  "function claimPSC() external",
-  "function contributors(address) external view returns (uint256 contribution, uint256 weightedContribution, uint256 ethReceived, uint256 pscWithdrawn)",
-  "function poolPSC() external view returns (uint256)",
-  "function poolETH() external view returns (uint256)",
-  "function deploymentTime() external view returns (uint256)",
-  "function timeLimit() external view returns (uint256)",
-  "function weightedETHRaised() external view returns (uint256)"
+const erc20ABI = [
+  "function decimals() view returns (uint8)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function symbol() view returns (string)"
 ]
 
-const pscABI = [
-  "function balanceOf(address account) external view returns (uint256)",
-  "function totalSupply() external view returns (uint256)",
-  "function delegates(address account) external view returns (address)",
-  "function delegate(address delegatee) external",
-  "function getVotes(address account) external view returns (uint256)"
-]
+const isNativeTokenAddress = (address?: string) =>
+  !address ||
+  address === '0' ||
+  address.toLowerCase() === ethers.ZeroAddress.toLowerCase()
 
-const governorABI = [
-  "function propose(address[] targets, uint256[] values, bytes[] calldatas, string description) external returns (uint256)",
-  "function castVote(uint256 proposalId, uint8 support) external returns (uint256)",
-  "function proposals(uint256 proposalId) external view returns (uint256 id, address proposer, uint256 eta, uint256 startBlock, uint256 endBlock, uint256 forVotes, uint256 againstVotes, uint256 abstainVotes, bool canceled, bool executed)",
-  "function state(uint256 proposalId) external view returns (uint8)",
-  "function proposalSnapshot(uint256 proposalId) external view returns (uint256)",
-  "function proposalDeadline(uint256 proposalId) external view returns (uint256)",
-  "function getVotes(address account, uint256 blockNumber) external view returns (uint256)",
-  "function hasVoted(uint256 proposalId, address account) external view returns (bool)",
-  "function proposalThreshold() external view returns (uint256)",
-  "function quorum(uint256 blockNumber) external view returns (uint256)"
-]
+const formatEthersError = (error: unknown) => {
+  if (typeof error === 'object' && error) {
+    const err = error as { shortMessage?: string; reason?: string; message?: string }
+    return err.shortMessage || err.reason || err.message || 'Unknown error'
+  }
+  if (error instanceof Error) return error.message
+  return 'Unknown error'
+}
+
+const resolveChainContext = async () => {
+  const { signer, provider, chainId: initChainId } = await initProvider()
+  const network = await provider.getNetwork()
+  const chainId = initChainId || Number(network.chainId)
+  return { signer, provider, chainId }
+}
+
+const getRewardsPoolContext = async () => {
+  const ctx = await resolveChainContext()
+  const addresses = getCoreAddresses(ctx.chainId)
+  if (!addresses.rewardsPool) {
+    throw new Error('RewardsPool address not configured')
+  }
+  const signerAddress = await ctx.signer.getAddress()
+  return {
+    ...ctx,
+    poolAddress: addresses.rewardsPool,
+    prmAddress: addresses.prm,
+    signerAddress,
+    poolContract: RewardsPool__factory.connect(addresses.rewardsPool, ctx.signer),
+  }
+}
+
+const getGovernorContext = async () => {
+  const ctx = await resolveChainContext()
+  const addresses = getCoreAddresses(ctx.chainId)
+  if (!addresses.governor) {
+    throw new Error('Governor contract address not configured')
+  }
+  return {
+    ...ctx,
+    governorAddress: addresses.governor,
+    governorContract: GovernorContract__factory.connect(addresses.governor, ctx.signer),
+    prmAddress: addresses.prm,
+  }
+}
 
 // Initialize Web3 provider
 export const initProvider = async () => {
   try {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      throw new Error('MetaMask not detected')
+    const client = await getConnectorClient(config)
+    const { account, chain, transport } = client
+    const network = {
+      chainId: chain.id,
+      name: chain.name,
+      ensAddress: (chain.contracts as any)?.ensRegistry?.address,
     }
-
-    const provider = new ethers.BrowserProvider(window.ethereum)
-    const accounts = await provider.send('eth_requestAccounts', [])
-    const signer = await provider.getSigner()
     
-    return { provider, signer, account: accounts[0] }
+    // Create an Ethers provider using the Viem client transport
+    const provider = new ethers.BrowserProvider(transport as any, network)
+    const signer = new ethers.JsonRpcSigner(provider, account.address)
+    
+    return { provider, signer, account: account.address, chainId: chain.id }
   } catch (error) {
     console.error('Failed to initialize provider:', error)
     throw error
@@ -162,21 +230,140 @@ export const createPurchase = async (
   tokenAddress: string
 ): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    // Simulate blockchain transaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    const mockPurchaseId = `0x${Math.random().toString(16).slice(2, 42)}`
-    
+    const { signer, provider, chainId: initialChainId } = await initProvider()
+    const network = await provider.getNetwork()
+    const chainId = initialChainId || Number(network.chainId)
+    const parinumConfig = getParinumNetworkConfig(chainId)
+
+    if (!parinumConfig) {
+      return {
+        success: false,
+        error: `Unsupported network (chainId ${chainId || 'unknown'})`,
+      }
+    }
+    if (!parinumConfig.factoryAddress) {
+      return {
+        success: false,
+        error: `ParinumFactory address not configured for ${parinumConfig.name}`,
+      }
+    }
+    if (!ethers.isAddress(seller)) {
+      return { success: false, error: 'Invalid seller address' }
+    }
+
+    const sellerAddress = ethers.getAddress(seller)
+    const tokenIsNative = isNativeTokenAddress(tokenAddress)
+    const normalizedToken = tokenIsNative
+      ? ethers.ZeroAddress
+      : ethers.getAddress(tokenAddress)
+
+    const token =
+      tokenIsNative || normalizedToken === ethers.ZeroAddress
+        ? null
+        : new ethers.Contract(normalizedToken, erc20ABI, signer)
+
+    const tokenDecimals =
+      token && typeof token.decimals === 'function'
+        ? await token.decimals()
+        : 18
+
+    const parsedPrice = tokenIsNative
+      ? ethers.parseEther(price || '0')
+      : ethers.parseUnits(price || '0', tokenDecimals)
+    const parsedCollateral = tokenIsNative
+      ? ethers.parseEther(collateral || '0')
+      : ethers.parseUnits(collateral || '0', tokenDecimals)
+
+    const factory = new ethers.Contract(
+      parinumConfig.factoryAddress,
+      parinumConfig.factoryAbi,
+      signer
+    )
+
+    const createContractTx = await factory.createContract()
+    const createContractReceipt = await createContractTx.wait()
+
+    const factoryInterface =
+      getParinumFactoryInterface(chainId) ||
+      new ethers.Interface(parinumConfig.factoryAbi)
+
+    const purchaseIdFromEvent = (() => {
+      if (!createContractReceipt?.logs?.length) return ''
+      for (const log of createContractReceipt.logs) {
+        try {
+          const parsed = factoryInterface.parseLog(log)
+          if (
+            parsed?.name === 'CreatedContract' ||
+            parsed?.name === 'CreatedPurchase'
+          ) {
+            const arg = parsed.args?.purchaseId ?? parsed.args?.[0]
+            if (arg) return arg as string
+          }
+        } catch {
+          continue
+        }
+      }
+      return ''
+    })()
+
+    const purchaseId =
+      purchaseIdFromEvent ||
+      createContractReceipt?.logs.find(
+        (log: any) =>
+          log.address.toLowerCase() !==
+          parinumConfig.factoryAddress.toLowerCase()
+      )?.address
+
+    if (!purchaseId) {
+      return {
+        success: false,
+        error: 'Could not determine purchase contract address',
+      }
+    }
+
+    const purchaseContract = new ethers.Contract(
+      purchaseId,
+      parinumConfig.cloneAbi,
+      signer
+    )
+
+    let tx
+    if (tokenIsNative) {
+      const value = parsedPrice + parsedCollateral
+      tx = await purchaseContract.createPurchase(
+        sellerAddress,
+        parsedPrice,
+        parsedCollateral,
+        ethers.ZeroAddress,
+        { value }
+      )
+    } else {
+      const total = parsedPrice + parsedCollateral
+      if (!token) {
+        return { success: false, error: 'Token contract could not be created' }
+      }
+      const approval = await token.approve(purchaseId, total)
+      await approval.wait()
+
+      tx = await purchaseContract.createPurchase(
+        sellerAddress,
+        parsedPrice,
+        parsedCollateral,
+        normalizedToken
+      )
+    }
+
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      purchaseId: mockPurchaseId,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      purchaseId,
+      txHash: receipt?.hash,
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error),
     }
   }
 }
@@ -184,17 +371,66 @@ export const createPurchase = async (
 // Confirm a purchase (seller locks collateral)
 export const confirmPurchase = async (purchaseId: string): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    const { signer, provider, chainId: initialChainId } = await initProvider()
+    const network = await provider.getNetwork()
+    const chainId = initialChainId || Number(network.chainId)
+    const parinumConfig = getParinumNetworkConfig(chainId)
+
+    if (!parinumConfig) {
+      return {
+        success: false,
+        error: `Unsupported network (chainId ${chainId || 'unknown'})`,
+      }
+    }
+
+    const purchase = new ethers.Contract(
+      purchaseId,
+      parinumConfig.cloneAbi,
+      signer
+    )
+    const tokenAddr: string = await purchase.tokenAddress()
+    const collateral: bigint = await purchase.collateral()
+    const [seller, currentState] = await Promise.all([
+      purchase.seller(),
+      purchase.state()
+    ])
+
+    const signerAddress = await signer.getAddress()
+    if (seller.toLowerCase() !== signerAddress.toLowerCase()) {
+      return { 
+        success: false, 
+        error: `Unauthorized: Only the seller can confirm this purchase. Connected: ${signerAddress}, Seller: ${seller}` 
+      }
+    }
+
+    // State 1 = Created
+    if (Number(currentState) !== 1) {
+      return { 
+        success: false, 
+        error: `Invalid State: Purchase must be Created (1) to confirm. Current state: ${currentState}` 
+      }
+    }
+
+    let tx
+    if (isNativeTokenAddress(tokenAddr)) {
+      tx = await purchase.confirmPurchase({ value: collateral })
+    } else {
+      const token = new ethers.Contract(tokenAddr, erc20ABI, signer)
+      const approval = await token.approve(purchaseId, collateral)
+      await approval.wait()
+      tx = await purchase.confirmPurchase()
+    }
+
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      txHash: receipt?.hash,
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error),
     }
   }
 }
@@ -202,17 +438,57 @@ export const confirmPurchase = async (purchaseId: string): Promise<TransactionRe
 // Release purchase funds to seller
 export const releasePurchase = async (purchaseId: string): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    const { signer, provider, chainId: initialChainId } = await initProvider()
+    const network = await provider.getNetwork()
+    const chainId = initialChainId || Number(network.chainId)
+    const parinumConfig = getParinumNetworkConfig(chainId)
+
+    if (!parinumConfig) {
+      return {
+        success: false,
+        error: `Unsupported network (chainId ${chainId || 'unknown'})`,
+      }
+    }
+
+    const purchase = new ethers.Contract(
+      purchaseId,
+      parinumConfig.cloneAbi,
+      signer
+    )
+
+    // Pre-transaction validation
+    const [buyer, currentState] = await Promise.all([
+      purchase.buyer(),
+      purchase.state()
+    ])
+
+    const signerAddress = await signer.getAddress()
+    if (buyer.toLowerCase() !== signerAddress.toLowerCase()) {
+      return { 
+        success: false, 
+        error: `Unauthorized: Only the buyer can release this purchase. Connected: ${signerAddress}, Buyer: ${buyer}` 
+      }
+    }
+
+    // State 2 = Confirmed
+    if (Number(currentState) !== 2) {
+      return { 
+        success: false, 
+        error: `Invalid State: Purchase must be Confirmed (2) to release. Current state: ${currentState}` 
+      }
+    }
+
+    const tx = await purchase.releasePurchase()
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      txHash: receipt?.hash,
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error),
     }
   }
 }
@@ -220,17 +496,57 @@ export const releasePurchase = async (purchaseId: string): Promise<TransactionRe
 // Abort a purchase and refund funds
 export const abortPurchase = async (purchaseId: string): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    const { signer, provider, chainId: initialChainId } = await initProvider()
+    const network = await provider.getNetwork()
+    const chainId = initialChainId || Number(network.chainId)
+    const parinumConfig = getParinumNetworkConfig(chainId)
+
+    if (!parinumConfig) {
+      return {
+        success: false,
+        error: `Unsupported network (chainId ${chainId || 'unknown'})`,
+      }
+    }
+
+    const purchase = new ethers.Contract(
+      purchaseId,
+      parinumConfig.cloneAbi,
+      signer
+    )
+
+    // Pre-transaction validation
+    const [buyer, currentState] = await Promise.all([
+      purchase.buyer(),
+      purchase.state()
+    ])
+
+    const signerAddress = await signer.getAddress()
+    if (buyer.toLowerCase() !== signerAddress.toLowerCase()) {
+      return { 
+        success: false, 
+        error: `Unauthorized: Only the buyer can abort this purchase. Connected: ${signerAddress}, Buyer: ${buyer}` 
+      }
+    }
+
+    // State 1 = Created
+    if (Number(currentState) !== 1) {
+      return { 
+        success: false, 
+        error: `Invalid State: Purchase must be Created (1) to abort. Current state: ${currentState}` 
+      }
+    }
+
+    const tx = await purchase.abortPurchase()
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      txHash: receipt?.hash,
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error),
     }
   }
 }
@@ -238,19 +554,56 @@ export const abortPurchase = async (purchaseId: string): Promise<TransactionResu
 // Get purchase details
 export const getPurchaseDetails = async (purchaseId: string): Promise<PurchaseDetails | null> => {
   try {
-    // TODO: Replace with actual contract call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock purchase details
+    const { provider, chainId } = await resolveChainContext()
+    const parinumConfig = getParinumNetworkConfig(chainId)
+    if (!parinumConfig) return null
+
+    const purchase = new ethers.Contract(
+      purchaseId,
+      parinumConfig.cloneAbi,
+      provider
+    )
+
+    const [buyer, seller, priceRaw, collateralRaw, tokenAddr, state, latestBlock] =
+      await Promise.all([
+        purchase.buyer(),
+        purchase.seller(),
+        purchase.price(),
+        purchase.collateral(),
+        purchase.tokenAddress(),
+        purchase.state(),
+        provider.getBlock('latest')
+      ])
+
+    const tokenIsNative = isNativeTokenAddress(tokenAddr)
+    let decimals = 18
+    if (!tokenIsNative) {
+      try {
+        const token = new ethers.Contract(tokenAddr, erc20ABI, provider)
+        decimals = await token.decimals()
+      } catch {
+        decimals = 18
+      }
+    }
+
+    const statusMap: Record<number, PurchaseDetails['status']> = {
+      0: 'inactive',
+      1: 'created',
+      2: 'confirmed',
+      3: 'failed',
+    }
+
     return {
       id: purchaseId,
-      seller: '0x456b789a012c345d678e901f234567890abcdef1',
-      buyer: '0x742d35Cc6f34D84C44Da98B954EedeAC495271d0',
-      price: '0.5',
-      collateral: '0.1',
-      tokenAddress: '0x0000000000000000000000000000000000000000',
-      status: 'created',
-      timestamp: new Date()
+      seller,
+      buyer,
+      price: ethers.formatUnits(priceRaw, decimals),
+      collateral: ethers.formatUnits(collateralRaw, decimals),
+      tokenAddress: tokenAddr,
+      status: statusMap[Number(state)] || 'created',
+      timestamp: latestBlock?.timestamp
+        ? new Date(Number(latestBlock.timestamp) * 1000)
+        : new Date(),
     }
   } catch (error) {
     console.error('Failed to get purchase details:', error)
@@ -261,34 +614,85 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<PurchaseDe
 // Get transaction logs for a purchase
 export const getPurchaseLogs = async (purchaseId: string) => {
   try {
-    // TODO: Replace with actual event log queries
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock transaction logs
-    return [
-      {
-        id: '1',
-        timestamp: new Date('2025-01-02T10:30:00'),
-        action: 'Purchase Created',
-        status: 'success' as const,
-        txHash: '0x1234567890abcdef1234567890abcdef12345678901234567890abcdef12345678',
-        from: '0x742d35Cc6f34D84C44Da98B954EedeAC495271d0',
-        to: '0x456b789a012c345d678e901f234567890abcdef1',
-        amount: '0.5 ETH',
-        gasUsed: '21,000'
-      },
-      {
-        id: '2',
-        timestamp: new Date('2025-01-02T11:15:00'),
-        action: 'Seller Confirmation',
-        status: 'success' as const,
-        txHash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
-        from: '0x456b789a012c345d678e901f234567890abcdef1',
-        to: '0x742d35Cc6f34D84C44Da98B954EedeAC495271d0',
-        amount: '0.5 ETH',
-        gasUsed: '45,000'
+    const { provider, chainId } = await resolveChainContext()
+    const parinumConfig = getParinumNetworkConfig(chainId)
+    if (!parinumConfig) return []
+
+    const purchase = new ethers.Contract(
+      purchaseId,
+      parinumConfig.cloneAbi,
+      provider
+    )
+
+    const tokenAddress = await purchase.tokenAddress()
+    const tokenIsNative = isNativeTokenAddress(tokenAddress)
+    let decimals = 18
+    let symbol = tokenIsNative ? parinumConfig.nativeSymbol : 'TOKEN'
+    if (!tokenIsNative) {
+      try {
+        const token = new ethers.Contract(tokenAddress, erc20ABI, provider)
+        decimals = await token.decimals()
+        symbol = await token.symbol()
+      } catch {
+        decimals = 18
+        symbol = 'TOKEN'
       }
+    }
+
+    const createdFilter = purchase.filters?.PurchaseCreated?.()
+    const confirmedFilter = purchase.filters?.PurchaseConfirmed?.()
+    const releasedFilter = purchase.filters?.PurchaseReleased?.()
+    const abortedFilter = purchase.filters?.PurchaseAborted?.()
+
+    const createdLogs = createdFilter
+      ? await purchase.queryFilter(createdFilter, 0)
+      : []
+    const confirmedLogs = confirmedFilter
+      ? await purchase.queryFilter(confirmedFilter, 0)
+      : []
+    const releasedLogs = releasedFilter
+      ? await purchase.queryFilter(releasedFilter, 0)
+      : []
+    const abortedLogs = abortedFilter
+      ? await purchase.queryFilter(abortedFilter, 0)
+      : []
+
+    const logs = [
+      ...createdLogs.map((log) => ({ type: 'Purchase Created', log })),
+      ...confirmedLogs.map((log) => ({ type: 'Purchase Confirmed', log })),
+      ...releasedLogs.map((log) => ({ type: 'Purchase Released', log })),
+      ...abortedLogs.map((log) => ({ type: 'Purchase Aborted', log })),
     ]
+
+    const enriched = await Promise.all(
+      logs.map(async ({ type, log }, idx) => {
+        const block = await provider.getBlock(log.blockNumber)
+        const receipt = await provider.getTransactionReceipt(
+          log.transactionHash
+        )
+        const args: any = (log as any).args || {}
+        const price = args.price ?? args.ethValue ?? args.collateral ?? 0n
+        const amount = ethers.formatUnits(price, decimals)
+
+        return {
+          id: `${idx + 1}`,
+          timestamp: block?.timestamp
+            ? new Date(Number(block.timestamp) * 1000)
+            : new Date(),
+          action: type,
+          status: 'success' as const,
+          txHash: log.transactionHash,
+          from: args.buyer || args.seller || '',
+          to: args.seller || args.buyer || '',
+          amount: `${amount} ${symbol}`,
+          gasUsed: receipt?.gasUsed ? receipt.gasUsed.toString() : '0',
+        }
+      })
+    )
+
+    return enriched.sort(
+      (a, b) => (a.timestamp?.getTime?.() || 0) - (b.timestamp?.getTime?.() || 0)
+    )
   } catch (error) {
     console.error('Failed to get purchase logs:', error)
     return []
@@ -325,8 +729,12 @@ export const getWalletBalance = async (address: string, tokenAddress?: string) =
       const balance = await provider.getBalance(address)
       return ethers.formatEther(balance)
     } else {
-      // TODO: Get ERC20 token balance
-      return '0'
+      const token = new ethers.Contract(tokenAddress, erc20ABI, provider)
+      const [balance, decimals] = await Promise.all([
+        token.balanceOf(address),
+        token.decimals()
+      ])
+      return ethers.formatUnits(balance, decimals)
     }
   } catch (error) {
     console.error('Failed to get wallet balance:', error)
@@ -337,17 +745,29 @@ export const getWalletBalance = async (address: string, tokenAddress?: string) =
 // Create a new stake
 export const createNewStake = async (amount: string, stakeTime: number): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    const { poolContract, prmAddress, poolAddress, signer } = await getRewardsPoolContext()
+
+    if (!prmAddress) {
+      return { success: false, error: 'PRM token address not configured' }
+    }
+
+    const prm = PRM__factory.connect(prmAddress, signer)
+    const amountWei = ethers.parseEther(amount || '0')
+
+    const approval = await prm.approve(poolAddress, amountWei)
+    await approval.wait()
+
+    const tx = await poolContract.newStake(amountWei, BigInt(stakeTime))
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      txHash: receipt?.hash
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error)
     }
   }
 }
@@ -355,17 +775,18 @@ export const createNewStake = async (amount: string, stakeTime: number): Promise
 // Claim rewards and withdraw stake
 export const claimRewardsandWithdrawStake = async (): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    const { poolContract } = await getRewardsPoolContext()
+    const tx = await poolContract.claimRewardsAndWithdrawStake()
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      txHash: receipt?.hash
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error)
     }
   }
 }
@@ -373,17 +794,18 @@ export const claimRewardsandWithdrawStake = async (): Promise<TransactionResult>
 // Claim rewards and reset stake
 export const claimRewardsandResetStake = async (stakeTime: number): Promise<TransactionResult> => {
   try {
-    // TODO: Replace with actual contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    const { poolContract } = await getRewardsPoolContext()
+    const tx = await poolContract.claimRewardsAndResetStake(BigInt(stakeTime))
+    const receipt = await tx.wait()
+
     return {
       success: true,
-      txHash: `0x${Math.random().toString(16).slice(2, 66)}`
+      txHash: receipt?.hash
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: formatEthersError(error)
     }
   }
 }
@@ -391,15 +813,33 @@ export const claimRewardsandResetStake = async (stakeTime: number): Promise<Tran
 // Get stake information
 export const getStakeInfo = async (): Promise<StakeInfo> => {
   try {
-    // TODO: Replace with actual contract call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock stake data
+    const { poolContract, provider, signerAddress } = await getRewardsPoolContext()
+    const account = signerAddress
+    const latestBlock = await provider.getBlock('latest')
+    const now = Number(latestBlock?.timestamp || Math.floor(Date.now() / 1000))
+
+    let totalAmount = 0n
+    let availableAmount = 0n
+
+    for (let i = 0; i < 10; i++) {
+      try {
+        const stake = await poolContract.stakes(account, i)
+        if (stake.amount === 0n && stake.stakeTime === 0n) break
+        totalAmount += stake.amount
+        const matured = now - Number(stake.startTime) >= Number(stake.stakeTime)
+        if (matured) {
+          availableAmount += stake.amount
+        }
+      } catch {
+        break
+      }
+    }
+
     return {
-      totalAmount: '150.5',
-      totalRewardAmount: '12.35',
-      availableAmount: '75.0',
-      availableRewardAmount: '6.15'
+      totalAmount: ethers.formatEther(totalAmount),
+      totalRewardAmount: '0',
+      availableAmount: ethers.formatEther(availableAmount),
+      availableRewardAmount: '0'
     }
   } catch (error) {
     console.error('Failed to get stake info:', error)
@@ -415,17 +855,21 @@ export const getStakeInfo = async (): Promise<StakeInfo> => {
 // Get stake information by index
 export const getStakeInfoByIndex = async (stakeIndex: number): Promise<StakeData | null> => {
   try {
-    // TODO: Replace with actual contract call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock individual stake data
+    const { poolContract, provider, signerAddress } = await getRewardsPoolContext()
+    const account = signerAddress
+    const stake = await poolContract.stakes(account, stakeIndex)
+    const latestBlock = await provider.getBlock('latest')
+    const now = Number(latestBlock?.timestamp || Math.floor(Date.now() / 1000))
+
+    const isAvailable = now - Number(stake.startTime) >= Number(stake.stakeTime)
+
     return {
-      amount: '50.0',
-      stakeTime: 2592000, // 30 days in seconds
-      startTime: Date.now() - (15 * 24 * 60 * 60 * 1000), // 15 days ago
-      multiplier: '1.05',
-      rewards: '2.5',
-      isAvailable: false
+      amount: ethers.formatEther(stake.amount),
+      stakeTime: Number(stake.stakeTime),
+      startTime: Number(stake.startTime) * 1000,
+      multiplier: calculateStakeMultiplier(Number(stake.stakeTime)),
+      rewards: '0',
+      isAvailable
     }
   } catch (error) {
     console.error('Failed to get stake info by index:', error)
@@ -446,26 +890,24 @@ export const calculateStakeMultiplier = (stakeTimeInSeconds: number): string => 
 // Buy PSC tokens during ICO
 export const buyPSCTokens = async (referer: string, amount: string): Promise<TransactionResult> => {
   try {
-    const { provider, signer } = await initProvider()
-    
-    // Convert amount to wei
+    const { signer, chainId } = await resolveChainContext()
+    const { ico } = getCoreAddresses(chainId)
+    if (!ico) {
+      return { success: false, error: 'PRM ICO contract address not configured' }
+    }
+
+    const icoContract = PRMICO__factory.connect(ico, signer)
+
     const amountWei = ethers.parseEther(amount || "0")
-    const refererAddress = referer || ethers.ZeroAddress
-    
-    // Create contract instance
-    const crowdfunder = new ethers.Contract(
-      contractAddresses.crowdfunder,
-      crowdfunderABI,
-      signer
-    )
-    
-    // Execute buy transaction
-    const tx = await crowdfunder.buyPSC(refererAddress, { value: amountWei })
+    const refererAddress = referer ? ethers.getAddress(referer) : ethers.ZeroAddress
+    const multiplier = await icoContract.getMultiplier()
+
+    const tx = await icoContract.buyPRM(refererAddress, multiplier, { value: amountWei })
     const receipt = await tx.wait()
-    
+
     return {
       success: true,
-      txHash: receipt.hash
+      txHash: receipt?.hash
     }
   } catch (error) {
     return {
@@ -478,20 +920,19 @@ export const buyPSCTokens = async (referer: string, amount: string): Promise<Tra
 // Claim PSC tokens after ICO ends
 export const claimPSCTokens = async (): Promise<TransactionResult> => {
   try {
-    const { provider, signer } = await initProvider()
-    
-    const crowdfunder = new ethers.Contract(
-      contractAddresses.crowdfunder,
-      crowdfunderABI,
-      signer
-    )
-    
-    const tx = await crowdfunder.claimPSC()
+    const { signer, chainId } = await resolveChainContext()
+    const { ico } = getCoreAddresses(chainId)
+    if (!ico) {
+      return { success: false, error: 'PRM ICO contract address not configured' }
+    }
+
+    const icoContract = PRMICO__factory.connect(ico, signer)
+    const tx = await icoContract.claimPRM()
     const receipt = await tx.wait()
-    
+
     return {
       success: true,
-      txHash: receipt.hash
+      txHash: receipt?.hash
     }
   } catch (error) {
     return {
@@ -503,34 +944,35 @@ export const claimPSCTokens = async (): Promise<TransactionResult> => {
 
 // Get ICO information
 export const getIcoInfo = async (): Promise<IcoInfo> => {
-  const cached = readCache.get<IcoInfo>('ico-info')
-  if (cached) return cached
   try {
-    const { provider } = await initProvider()
-    
-    const crowdfunder = new ethers.Contract(
-      contractAddresses.crowdfunder,
-      crowdfunderABI,
-      provider
-    )
-    
-    const [poolPSC, poolETH, deploymentTime, timeLimit, weightedETHRaised] = await Promise.all([
-      crowdfunder.poolPSC(),
-      crowdfunder.poolETH(),
-      crowdfunder.deploymentTime(),
-      crowdfunder.timeLimit(),
-      crowdfunder.weightedETHRaised()
+    const { provider, chainId } = await resolveChainContext()
+    const cacheKey = `ico-info-${chainId}`
+    const cached = readCache.get<IcoInfo>(cacheKey)
+    if (cached) return cached
+    const { ico } = getCoreAddresses(chainId)
+    if (!ico) {
+      throw new Error('PRM ICO contract address not configured')
+    }
+
+    const icoContract = PRMICO__factory.connect(ico, provider)
+
+    const [poolPRM, poolETH, deploymentTime, timeLimit, weightedETHRaised] = await Promise.all([
+      icoContract.poolPRM(),
+      icoContract.poolETH(),
+      icoContract.deploymentTime(),
+      icoContract.timeLimit(),
+      icoContract.weightedETHRaised()
     ])
-    
+
     const res: IcoInfo = {
-      poolPSC: ethers.formatEther(poolPSC),
+      poolPSC: ethers.formatEther(poolPRM),
       poolETH: ethers.formatEther(poolETH),
       deploymentTime: deploymentTime.toString(),
       timeLimit: timeLimit.toString(),
       weightedETHRaised: ethers.formatEther(weightedETHRaised),
       soldAmount: ethers.formatEther(weightedETHRaised) // Approximation
     }
-    readCache.set('ico-info', res)
+    readCache.set(cacheKey, res)
     return res
   } catch (error) {
     console.error('Failed to get ICO info:', error)
@@ -548,25 +990,24 @@ export const getIcoInfo = async (): Promise<IcoInfo> => {
 
 // Get account ICO information
 export const getAccountIcoInfo = async (account: string): Promise<AccountIcoInfo> => {
-  const key = `account-ico-${account?.toLowerCase?.() || ''}`
-  const cached = readCache.get<AccountIcoInfo>(key)
-  if (cached) return cached
   try {
-    const { provider } = await initProvider()
-    
-    const crowdfunder = new ethers.Contract(
-      contractAddresses.crowdfunder,
-      crowdfunderABI,
-      provider
-    )
-    
-    const contributor = await crowdfunder.contributors(account)
-    
+    const { provider, chainId } = await resolveChainContext()
+    const key = `account-ico-${chainId}-${account?.toLowerCase?.() || ''}`
+    const cached = readCache.get<AccountIcoInfo>(key)
+    if (cached) return cached
+    const { ico } = getCoreAddresses(chainId)
+    if (!ico) {
+      throw new Error('PRM ICO contract address not configured')
+    }
+
+    const icoContract = PRMICO__factory.connect(ico, provider)
+    const contributor = await icoContract.contributors(account)
+
     const res: AccountIcoInfo = {
       contribution: ethers.formatEther(contributor.contribution),
       weightedContribution: ethers.formatEther(contributor.weightedContribution),
       ethReceived: ethers.formatEther(contributor.ethReceived),
-      pscWithdrawn: ethers.formatEther(contributor.pscWithdrawn)
+      pscWithdrawn: ethers.formatEther(contributor.prmWithdrawn)
     }
     readCache.set(key, res)
     return res
@@ -605,21 +1046,21 @@ export const calculateIcoPrice = async (ethAmount: string): Promise<string> => {
 
 // Get voting power for an account
 export const getVotingPower = async (account: string): Promise<VotingPower> => {
-  const key = `voting-power-${account?.toLowerCase?.() || ''}`
-  const cached = readCache.get<VotingPower>(key)
-  if (cached) return cached
   try {
-    const { provider } = await initProvider()
-    
-    const pscContract = new ethers.Contract(
-      contractAddresses.psc,
-      pscABI,
-      provider
-    )
-    
-    const balance = await pscContract.balanceOf(account)
-    const votes = await pscContract.getVotes(account)
-    
+    const { provider, chainId } = await resolveChainContext()
+    const key = `voting-power-${chainId}-${account?.toLowerCase?.() || ''}`
+    const cached = readCache.get<VotingPower>(key)
+    if (cached) return cached
+    const { prm } = getCoreAddresses(chainId)
+    if (!prm) throw new Error('PRM token address not configured')
+
+    const prmContract = PRM__factory.connect(prm, provider)
+
+    const [balance, votes] = await Promise.all([
+      prmContract.balanceOf(account),
+      prmContract.getVotes(account)
+    ])
+
     const res: VotingPower = {
       balance: ethers.formatEther(balance),
       delegatedBalance: ethers.formatEther(votes)
@@ -638,17 +1079,16 @@ export const getVotingPower = async (account: string): Promise<VotingPower> => {
 // Delegate voting power
 export const delegateVotes = async (delegatee: string): Promise<TransactionResult> => {
   try {
-    const { signer } = await initProvider()
-    
-    const pscContract = new ethers.Contract(
-      contractAddresses.psc,
-      pscABI,
-      signer
-    )
-    
-    const tx = await pscContract.delegate(delegatee)
+    const { prmAddress, signer } = await getGovernorContext()
+    if (!prmAddress) {
+      return { success: false, error: 'PRM token address not configured' }
+    }
+
+    const prmContract = PRM__factory.connect(prmAddress, signer)
+
+    const tx = await prmContract.delegate(delegatee)
     await tx.wait()
-    
+
     return {
       success: true,
       txHash: tx.hash
@@ -670,33 +1110,29 @@ export const createProposal = async (
   description: string
 ): Promise<TransactionResult> => {
   try {
-    const { signer } = await initProvider()
-    
-    const governorContract = new ethers.Contract(
-      contractAddresses.governor,
-      governorABI,
-      signer
+    const { governorContract } = await getGovernorContext()
+
+    const tx = await governorContract.propose(
+      targets,
+      values.map((v) => BigInt(v)),
+      calldatas,
+      description
     )
-    
-    const tx = await governorContract.propose(targets, values, calldatas, description)
     const receipt = await tx.wait()
-    
-    // Extract proposal ID from logs
-    const event = receipt.logs.find((log: any) => {
+
+    let proposalId = ''
+    for (const log of receipt?.logs || []) {
       try {
         const parsed = governorContract.interface.parseLog(log)
-        return parsed?.name === 'ProposalCreated'
+        if (parsed?.name === 'ProposalCreated') {
+          proposalId = parsed.args?.[0]?.toString?.() || ''
+          break
+        }
       } catch {
-        return false
+        continue
       }
-    })
-    
-    let proposalId = ''
-    if (event) {
-      const parsed = governorContract.interface.parseLog(event)
-      proposalId = parsed?.args[0]?.toString() || ''
     }
-    
+
     return {
       success: true,
       txHash: tx.hash,
@@ -714,17 +1150,11 @@ export const createProposal = async (
 // Cast a vote on a proposal
 export const castVote = async (proposalId: string, support: number): Promise<TransactionResult> => {
   try {
-    const { signer } = await initProvider()
-    
-    const governorContract = new ethers.Contract(
-      contractAddresses.governor,
-      governorABI,
-      signer
-    )
-    
-    const tx = await governorContract.castVote(proposalId, support)
+    const { governorContract } = await getGovernorContext()
+
+    const tx = await governorContract.castVote(BigInt(proposalId), support)
     await tx.wait()
-    
+
     return {
       success: true,
       txHash: tx.hash
@@ -741,17 +1171,15 @@ export const castVote = async (proposalId: string, support: number): Promise<Tra
 // Get proposal information
 export const getProposalInfo = async (proposalId: string): Promise<ProposalInfo | null> => {
   try {
-    const { provider } = await initProvider()
-    
-    const governorContract = new ethers.Contract(
-      contractAddresses.governor,
-      governorABI,
+    const { governorAddress, provider } = await getGovernorContext()
+    const governorContract = GovernorContract__factory.connect(
+      governorAddress,
       provider
     )
-    
-    const proposal = await governorContract.proposals(proposalId)
-    const state = await governorContract.state(proposalId)
-    
+
+    const proposal = await (governorContract as any).proposals(BigInt(proposalId))
+    const state = await governorContract.state(BigInt(proposalId))
+
     return {
       id: proposalId,
       proposer: proposal.proposer,
@@ -775,15 +1203,13 @@ export const getProposalInfo = async (proposalId: string): Promise<ProposalInfo 
 // Check if user has voted on a proposal
 export const hasVoted = async (proposalId: string, account: string): Promise<boolean> => {
   try {
-    const { provider } = await initProvider()
-    
-    const governorContract = new ethers.Contract(
-      contractAddresses.governor,
-      governorABI,
+    const { governorAddress, provider } = await getGovernorContext()
+    const governorContract = GovernorContract__factory.connect(
+      governorAddress,
       provider
     )
-    
-    return await governorContract.hasVoted(proposalId, account)
+
+    return await governorContract.hasVoted(BigInt(proposalId), account)
   } catch (error) {
     console.error('Failed to check if voted:', error)
     return false
@@ -793,18 +1219,18 @@ export const hasVoted = async (proposalId: string, account: string): Promise<boo
 // Get governance settings
 export const getGovernanceSettings = async () => {
   try {
-    const { provider } = await initProvider()
-    
-    const governorContract = new ethers.Contract(
-      contractAddresses.governor,
-      governorABI,
+    const { governorAddress, provider } = await getGovernorContext()
+    const governorContract = GovernorContract__factory.connect(
+      governorAddress,
       provider
     )
-    
-    const proposalThreshold = await governorContract.proposalThreshold()
+
     const currentBlock = await provider.getBlockNumber()
-    const quorum = await governorContract.quorum(currentBlock)
-    
+    const [proposalThreshold, quorum] = await Promise.all([
+      governorContract.proposalThreshold(),
+      governorContract.quorum(currentBlock)
+    ])
+
     return {
       proposalThreshold: ethers.formatEther(proposalThreshold),
       quorum: ethers.formatEther(quorum),

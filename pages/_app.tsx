@@ -3,69 +3,56 @@ import '@rainbow-me/rainbowkit/styles.css'
 import type { AppProps } from 'next/app'
 import { AnimatePresence } from 'framer-motion'
 import { Toaster } from 'react-hot-toast'
-import { useEffect, useState } from 'react'
-import { ThemeProvider } from '@/components/ThemeProvider'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ThemeProvider, useTheme } from '@/components/ThemeProvider'
 import { 
   RainbowKitProvider, 
   darkTheme,
-  connectorsForWallets,
+  lightTheme,
 } from '@rainbow-me/rainbowkit'
-import {
-  metaMaskWallet,
-  coinbaseWallet,
-  walletConnectWallet,
-  rainbowWallet,
-  trustWallet,
-  ledgerWallet,
-  phantomWallet,
-  braveWallet,
-  argentWallet,
-  okxWallet,
-} from '@rainbow-me/rainbowkit/wallets'
-import { WagmiProvider, createConfig, http } from 'wagmi'
-import { mainnet, sepolia } from 'wagmi/chains'
+import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { config } from '@/lib/wagmiConfig'
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID'
+function ThemedRainbowKit({ children }: { children: ReactNode }) {
+  const { resolvedTheme } = useTheme()
+  const kitTheme = useMemo(
+    () =>
+      resolvedTheme === 'light'
+        ? lightTheme({ accentColor: '#2563eb', borderRadius: 'medium' })
+        : darkTheme({ accentColor: '#6366f1', borderRadius: 'medium' }),
+    [resolvedTheme],
+  )
 
-const connectors = connectorsForWallets(
-  [
-    {
-      groupName: 'Popular',
-      wallets: [
-        metaMaskWallet,
-        coinbaseWallet,
-        walletConnectWallet,
-        rainbowWallet,
-      ],
-    },
-    {
-      groupName: 'More',
-      wallets: [
-        trustWallet,
-        phantomWallet,
-        braveWallet,
-        ledgerWallet,
-        argentWallet,
-        okxWallet,
-      ],
-    },
-  ],
-  {
-    appName: 'Parinum',
-    projectId,
-  }
-)
+  return <RainbowKitProvider theme={kitTheme}>{children}</RainbowKitProvider>
+}
 
-const config = createConfig({
-  connectors,
-  chains: [mainnet, sepolia],
-  transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
-  },
-  ssr: true,
-})
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+  const toastStyle =
+    resolvedTheme === 'light'
+      ? {
+          background: '#ffffff',
+          color: '#0f172a',
+          border: '1px solid rgba(15, 23, 42, 0.12)',
+        }
+      : {
+          background: '#1e293b',
+          color: '#ffffff',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+        }
+
+  return (
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        duration: 4000,
+        className: 'theme-surface text-sm',
+        style: toastStyle,
+      }}
+    />
+  )
+}
 
 export default function App({ Component, pageProps, router }: AppProps) {
   const [queryClient] = useState(() => new QueryClient())
@@ -85,25 +72,14 @@ export default function App({ Component, pageProps, router }: AppProps) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme({ accentColor: '#6366f1', borderRadius: 'medium' })}>
-          <ThemeProvider>
+        <ThemeProvider>
+          <ThemedRainbowKit>
             <AnimatePresence mode="wait" initial={false}>
               <Component {...pageProps} key={router.asPath} />
             </AnimatePresence>
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                className: 'bg-dark-800 text-white border border-primary-500/20',
-                style: {
-                  background: '#1e293b',
-                  color: '#ffffff',
-                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                },
-              }}
-            />
-          </ThemeProvider>
-        </RainbowKitProvider>
+            <ThemedToaster />
+          </ThemedRainbowKit>
+        </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )
