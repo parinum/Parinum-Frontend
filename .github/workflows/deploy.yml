@@ -78,12 +78,25 @@ jobs:
           TOKEN: ${{ secrets.GH_PAT }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "::error::GH_PAT secret is empty or missing! Please add it to Settings > Secrets and variables > Actions > Repository secrets."
+            echo "::error::GH_PAT secret is empty! Check Settings > Secrets > Actions."
             exit 1
           fi
+          
+          # 1. Check who this token belongs to
+          echo "Checking Token Identity..."
+          curl -H "Authorization: token $TOKEN" https://api.github.com/user
+          
+          # 2. Configure URL rewriting (cover all bases)
           git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
           git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
           git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git+ssh://git@github.com/"
+
+      - name: Test Connection to Private Repo
+        run: |
+          echo "Testing HEAD access to parinum/Parinum-Upgradeable..."
+          git ls-remote https://github.com/parinum/Parinum-Upgradeable.git HEAD || { echo "::error::Connection failed! The Token does not have access to parinum/Parinum-Upgradeable"; exit 1; }
+          echo "Connection successful!"
 
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
