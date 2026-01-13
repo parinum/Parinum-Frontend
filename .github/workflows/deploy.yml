@@ -81,9 +81,9 @@ jobs:
             echo "::error::GH_PAT secret is empty or missing! Please add it to Settings > Secrets and variables > Actions > Repository secrets."
             exit 1
           fi
-          git config --global url."https://oauth2:${TOKEN}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://oauth2:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
-          git config --global url."https://oauth2:${TOKEN}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
 
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
