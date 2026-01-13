@@ -79,6 +79,8 @@ jobs:
         run: |
           if [ -n "$TOKEN" ]; then
             git config --global url."https://oauth2:${TOKEN}@github.com/".insteadOf "https://github.com/"
+            git config --global url."https://oauth2:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+            git config --global url."https://oauth2:${TOKEN}@github.com/".insteadOf "git@github.com:"
           fi
 
       - name: Install dependencies
