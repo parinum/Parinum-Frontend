@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -148,7 +148,7 @@ export default function PRMFunding() {
   }
 
   // Fetch account information
-  const fetchAccountInfo = async () => {
+  const fetchAccountInfo = useCallback(async () => {
     try {
       if (address) {
         const info = await getAccountIcoInfo(address)
@@ -157,7 +157,7 @@ export default function PRMFunding() {
     } catch (error) {
       console.error('Error fetching account info:', error)
     }
-  }
+  }, [address])
 
   // Calculate estimated PRM tokens (UI label only; backend still returns PRM value)
   useEffect(() => {
@@ -181,7 +181,7 @@ export default function PRMFunding() {
 
   useEffect(() => {
     fetchAccountInfo()
-  }, [address, chainId])
+  }, [fetchAccountInfo, chainId])
 
   // Handle buy PRM tokens
   const handleBuyTokens = async (e: React.FormEvent) => {

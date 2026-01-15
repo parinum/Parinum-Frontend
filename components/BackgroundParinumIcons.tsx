@@ -1,4 +1,5 @@
 import React from 'react'
+import Image from 'next/image'
 
 // Import the dark Parinum SVG as a static asset URL
 // We intentionally use a plain <img> for minimal overhead.
@@ -174,9 +175,11 @@ export default function BackgroundParinumIcons() {
 						transform: 'translate(-50%, -50%)',
 					}}
 				>
-					<img
+					<Image
 						src={icon.src}
 						alt=""
+						width={icon.size}
+						height={icon.size}
 						decoding="async"
 						loading="eager"
 						draggable={false}

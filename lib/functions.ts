@@ -869,7 +869,11 @@ export const getWalletBalance = async (address: string, tokenAddress?: string) =
 // Create a new stake
 export const createNewStake = async (amount: string, stakeTime: number): Promise<TransactionResult> => {
   try {
-    const { poolContract, prmAddress, poolAddress, signer } = await getRewardsPoolContext()
+    const { poolContract, prmAddress, poolAddress, signer, signerAddress } = await getRewardsPoolContext()
+
+    if (!signer || !signerAddress) {
+      return { success: false, error: 'Wallet not connected' }
+    }
 
     if (!prmAddress) {
       return { success: false, error: 'PRM token address not configured' }
@@ -881,7 +885,7 @@ export const createNewStake = async (amount: string, stakeTime: number): Promise
     const approval = await prm.approve(poolAddress, amountWei)
     await approval.wait()
 
-    const tx = await poolContract.newStake(amountWei, BigInt(stakeTime))
+    const tx = await poolContract.newStake(amountWei, BigInt(stakeTime), signerAddress)
     const receipt = await tx.wait()
 
     return {
