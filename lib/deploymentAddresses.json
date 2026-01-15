@@ -55,10 +55,10 @@
     "name": "polygon",
     "chainId": 137,
     "timestamp": "2026-01-15T14:42:28.227Z",
-    "GovernanceReceiver": "0xa32e4D37939353B76bd874C53ED1E017ccfA5536",
-    "FeeCollector": "0x6Fbe7a0D75B1581619C0e1D5d46d67279a0E1cE3",
-    "Factory": "0xfDf92e707d87ED4d3482Ac73Df9ed47979B4e37f",
-    "Clone": "0x433A6f1E60561d8807866d3d279Bebfaaf4E5FfB"
+    "GovernanceReceiver": "0x9a1dc68Cf96508854eE24Dd9Ae5cbebE1B3a3Db8",
+    "FeeCollector": "0x9e12E2B3ca415aDA87fe177b391F65ea7f688eB5",
+    "Factory": "0x36a879D2395D01f7330F694AA981155f167287F5",
+    "Clone": "0x650Ddc2c9914A0eEB51e7F784e56B758c6cF6DdF"
   },
   "8453": {
     "name": "base",

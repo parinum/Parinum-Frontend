@@ -15,12 +15,7 @@ import { createConfig, http } from 'wagmi'
 import {
   mainnet,
   bsc,
-  arbitrum,
-  base,
   polygon,
-  linea,
-  optimism,
-  unichain,
 } from 'wagmi/chains'
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID'
@@ -59,22 +54,12 @@ export const config = createConfig({
   chains: [
     mainnet,
     bsc,
-    arbitrum,
-    base,
     polygon,
-    linea,
-    optimism,
-    unichain,
   ],
   transports: {
     [mainnet.id]: http(),
     [bsc.id]: http(),
-    [arbitrum.id]: http(),
-    [base.id]: http(),
     [polygon.id]: http(),
-    [linea.id]: http(),
-    [optimism.id]: http(),
-    [unichain.id]: http(),
   },
   ssr: true,
 })

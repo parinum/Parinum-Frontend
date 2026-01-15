@@ -53,7 +53,6 @@ export default function PurchaseDetailsCard({ details, purchaseId }: PurchaseDet
   const displayPrice = details?.price || 'N/A'
   const displayCollateral = details?.collateral || 'N/A'
   const displayTokenAddress = details?.tokenAddress || 'N/A'
-  const displayTimestamp = details?.timestamp ? details.timestamp.toLocaleString() : 'N/A'
 
   return (
     <div className="bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl p-6 mt-6 shadow-xl">
@@ -120,11 +119,6 @@ export default function PurchaseDetailsCard({ details, purchaseId }: PurchaseDet
              <p className="font-mono text-secondary-900 dark:text-white break-all">{displayTokenAddress}</p>
              <CopyButton text={displayTokenAddress} />
             </div>
-        </div>
-        
-         <div className="space-y-1 md:col-span-2">
-            <p className="text-sm text-secondary-500 dark:text-dark-400">Timestamp</p>
-             <p className="text-secondary-900 dark:text-white">{displayTimestamp}</p>
         </div>
       </div>
     </div>

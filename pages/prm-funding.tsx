@@ -12,7 +12,7 @@ import {
   initProvider 
 } from '@/lib/functions'
 import { ethers } from 'ethers'
-import { useAccount, useChainId } from 'wagmi'
+import { useAccount, useChainId, useSwitchChain } from 'wagmi'
 import { getParinumNetworkConfig } from '@/lib/parinum'
 
 // Icons (removed dollar/coins icon per request)
@@ -70,6 +70,7 @@ export default function PRMFunding() {
   
   const { address } = useAccount()
   const chainId = useChainId()
+  const { switchChain } = useSwitchChain()
   const [accountInfo, setAccountInfo] = useState({
     contribution: '0',
     weightedContribution: '0',
@@ -176,11 +177,11 @@ export default function PRMFunding() {
   // Initial data fetch
   useEffect(() => {
     fetchIcoInfo()
-  }, [])
+  }, [chainId])
 
   useEffect(() => {
     fetchAccountInfo()
-  }, [address])
+  }, [address, chainId])
 
   // Handle buy PRM tokens
   const handleBuyTokens = async (e: React.FormEvent) => {
@@ -258,6 +259,37 @@ export default function PRMFunding() {
 
   return (
     <Layout>
+      {/* Network Check Popup */}
+      {chainId && chainId !== 1 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white dark:bg-dark-800 rounded-2xl p-8 max-w-md w-full shadow-2xl border border-secondary-200 dark:border-dark-700 text-center"
+          >
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary-100 dark:bg-primary-900/30 mb-6">
+              <svg className="h-8 w-8 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            
+            <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-3">
+              Please change networks to Parinum
+            </h3>
+            
+            <p className="text-secondary-600 dark:text-dark-300 mb-8">
+              To participate in the funding, you must be connected to the Ethereum Mainnet.
+            </p>
+            
+            <button
+              onClick={() => switchChain?.({ chainId: 1 })}
+              className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-primary-500/30"
+            >
+              Switch Network
+            </button>
+          </motion.div>
+        </div>
+      )}
       <div className="min-h-screen pt-20 pb-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
