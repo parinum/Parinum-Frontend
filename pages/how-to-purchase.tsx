@@ -119,7 +119,7 @@ export default function HowToPurchase() {
                     </span>
                   </div>
                   <p className="text-secondary-600 dark:text-dark-300 mb-6">
-                    The buyer starts by configuring the purchase agreement. You'll need the seller's wallet address.
+                    The buyer starts by configuring the purchase agreement. You&apos;ll need the seller&apos;s wallet address.
                     To ensure fairness, you will deposit the <strong>Purchase Price</strong> plus a <strong>Collateral Amount</strong>.
                   </p>
                   <div className="text-blue-600 dark:text-blue-400 font-semibold flex items-center group-hover:underline">
@@ -150,7 +150,7 @@ export default function HowToPurchase() {
                   </div>
                   <p className="text-secondary-600 dark:text-dark-300 mb-6">
                     The seller reviews the contract terms. To accept, the seller must also lock the <strong>Collateral Amount</strong>.
-                    This state ("Confirmed") signals that the order is active and the seller can proceed with delivery.
+                    This state (&quot;Confirmed&quot;) signals that the order is active and the seller can proceed with delivery.
                   </p>
                   <div className="text-blue-600 dark:text-blue-400 font-semibold flex items-center group-hover:underline">
                     Go to Confirm Purchase <ArrowRightIcon />
@@ -202,7 +202,7 @@ export default function HowToPurchase() {
             >
                <h4 className="text-xl font-bold text-red-800 dark:text-red-200 mb-2 group-hover:text-red-900 dark:group-hover:text-red-100 transition-colors">Change of Plans?</h4>
                <p className="text-red-700 dark:text-red-300">
-                 If the seller hasn't confirmed yet, the buyer can <strong>Abort</strong> the purchase to retrieve their funds immediately. 
+                 If the seller hasn&apos;t confirmed yet, the buyer can <strong>Abort</strong> the purchase to retrieve their funds immediately. 
                  <br/>
                  <span className="font-semibold mt-2 inline-block group-hover:underline">
                    Go to Abort Page &rarr;
