@@ -172,9 +172,6 @@ export default function Purchases() {
             <h1 className="text-4xl md:text-5xl font-bold text-secondary-900 dark:text-white mb-4">
               Secure Purchases
             </h1>
-            <p className="text-xl text-secondary-600 dark:text-dark-300 max-w-3xl mx-auto">
-              Create, manage, and track secure escrow transactions with built-in buyer and seller protection
-            </p>
           </motion.div>
 
           {/* Purchase Actions Grid */}

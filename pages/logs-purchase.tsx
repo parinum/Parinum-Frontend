@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import Layout from '@/components/Layout'
 import PurchaseStepsNavigation from '@/components/PurchaseStepsNavigation'
 import { useRouter } from 'next/router'
-import { getPurchaseLogs } from '@/lib/functions'
+import { getPurchaseLogs, TransactionLog } from '@/lib/functions'
 
 const InfoIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,18 +28,6 @@ const DocumentTextIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>
 )
-
-interface TransactionLog {
-  id: string
-  timestamp: Date
-  action: string
-  status: 'success' | 'pending' | 'failed'
-  txHash: string
-  from: string
-  to: string
-  amount?: string
-  gasUsed?: string
-}
 
 export default function LogsPurchase() {
   const [purchaseId, setPurchaseId] = useState('')
@@ -72,7 +60,7 @@ export default function LogsPurchase() {
     {
       id: '2',
       timestamp: new Date('2025-01-02T11:15:00'),
-      action: 'Seller Confirmation',
+      action: 'Purchase Confirmed',
       status: 'success',
       txHash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
       from: '0x456b789a012c345d678e901f234567890abcdef1',
@@ -83,8 +71,8 @@ export default function LogsPurchase() {
     {
       id: '3',
       timestamp: new Date('2025-01-02T14:22:00'),
-      action: 'Funds Released',
-      status: 'pending',
+      action: 'Purchase Released',
+      status: 'success',
       txHash: '0x789012345678901234567890123456789012345678901234567890123456789',
       from: '0x742d35Cc6f34D84C44Da98B954EedeAC495271d0',
       to: '0x456b789a012c345d678e901f234567890abcdef1',
@@ -99,12 +87,27 @@ export default function LogsPurchase() {
 
     setIsLoading(true)
     setError('')
+    setLogs([])
     
     try {
       const purchaseLogs = await getPurchaseLogs(purchaseId)
+      console.log('Fetched logs:', purchaseLogs)
       setLogs(purchaseLogs)
     } catch (error) {
-      setError(`Error fetching logs: ${error}`)
+      const message = error instanceof Error ? error.message : String(error)
+      const displayMessage = `Error fetching logs: ${message}`
+      setError(displayMessage)
+      setLogs([{
+        id: 'error',
+        timestamp: new Date(),
+        action: 'Error fetching logs',
+        status: 'failed',
+        txHash: 'N/A',
+        from: 'N/A',
+        to: 'N/A',
+        message: displayMessage,
+        isError: true,
+      }])
     } finally {
       setIsLoading(false)
     }
@@ -120,10 +123,13 @@ export default function LogsPurchase() {
   }
 
   const truncateAddress = (address: string) => {
+    if (!address) return 'N/A'
+    if (address.length <= 12) return address
     return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
 
   const openEtherscan = (txHash: string) => {
+    if (!txHash || !txHash.startsWith('0x')) return
     window.open(`https://etherscan.io/tx/${txHash}`, '_blank')
   }
 
@@ -140,26 +146,48 @@ export default function LogsPurchase() {
   }
 
   const summarizeLogs = (items: TransactionLog[]) => {
-    const total = items.length
-    const pending = items.filter((l) => l.status === 'pending').length
-    const completed = items.filter((l) => l.status !== 'pending').length
-    const successes = items.filter((l) => l.status === 'success').length
-    const successRatePct = completed > 0 ? ((successes / completed) * 100) : null
+    // Logic adapted from calculateWalletStats logic
+    // 1. Total Confirmed Purchases = Count of "Purchase Confirmed" logs (Buyer + Seller)
+    // 2. Completed Purchases = Count of "Purchase Completed" logs (Buyer + Seller)
+    // 3. Unresolved (Active) = Confirmed - Completed
+    // 4. Volume = Sum of ethValue from "Purchase Completed" logs
+    
+    // Note: The logs returned by getPurchaseLogs are already enriched from the 4 specific events:
+    // ReceiverUnresolvedPurchase -> 'Purchase Confirmed (Buyer)'
+    // SellerUnresolvedPurchase -> 'Purchase Confirmed (Seller)'
+    // ReceiverCompletedPurchase -> 'Purchase Completed (Buyer)'
+    // SellerCompletedPurchase -> 'Purchase Completed (Seller)'
 
-    const volumes: Record<string, number> = {}
-    for (const it of items) {
-      // count only confirmed (successful) transfers towards volume
-      if (it.status !== 'success' || !it.amount) continue
-      const parsed = parseAmount(it.amount)
-      if (!parsed) continue
-      const key = parsed.unit || 'UNITS'
-      volumes[key] = (volumes[key] || 0) + parsed.value
+    const confirmedLogs = items.filter(l => l.action.includes('Confirmed'))
+    const completedLogs = items.filter(l => l.action.includes('Completed'))
+
+    const totalConfirmed = confirmedLogs.length
+    const totalCompleted = completedLogs.length
+    
+    const pending = Math.max(0, totalConfirmed - totalCompleted)
+    
+    let successRatePct: number | null = 0
+    if (totalConfirmed > 0) {
+        successRatePct = (totalCompleted / totalConfirmed) * 100
     }
-    const volumeDisplay = Object.entries(volumes)
-      .map(([unit, val]) => `${val.toLocaleString(undefined, { maximumFractionDigits: 6 })}${unit ? ` ${unit}` : ''}`)
-      .join(' + ')
 
-    return { total, pending, successRatePct, volumeDisplay }
+    // Volume calculation
+    // We need the raw value. TransactionLog usually has string amount.
+    // We stored rawEthValue in the log object in getPurchaseLogs if we updated interface.
+    // If not, we parse the amount string.
+    
+    let volume = 0
+    for (const log of completedLogs) {
+        // Try to parse amount string "0.5 ETH" -> 0.5
+        const parsed = parseAmount(log.amount)
+        if (parsed) {
+            volume += parsed.value
+        }
+    }
+    
+    const volumeDisplay = `${volume.toLocaleString(undefined, { maximumFractionDigits: 6 })} ETH` // Simplified unit assumption
+
+    return { total: totalConfirmed, pending, successRatePct, volumeDisplay }
   }
 
   return (
@@ -193,15 +221,15 @@ export default function LogsPurchase() {
             <form onSubmit={handleSearch} className="space-y-6">
               <div className="space-y-3">
                 <label className="flex items-center text-secondary-900 dark:text-white font-medium">
-                  Purchase ID
+                  Wallet ID
                   <div className="group relative ml-2">
                     <InfoIcon />
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-white dark:bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-secondary-600 dark:text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                      Enter the purchase ID to view all related blockchain transactions and events.
+                      Enter the wallet ID to view all related blockchain transactions and events.
                     </div>
                   </div>
                 </label>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <input
                     type="text"
                     value={purchaseId}
@@ -305,6 +333,12 @@ export default function LogsPurchase() {
                       )}
                     </div>
 
+                    {log.message && (
+                      <div className="mt-3 text-sm text-red-600 dark:text-red-400">
+                        {log.message}
+                      </div>
+                    )}
+
                     <div className="mt-4 pt-4 border-t border-primary-500/20">
                       <div className="flex items-center justify-between">
                         <div>
@@ -313,7 +347,8 @@ export default function LogsPurchase() {
                         </div>
                         <button
                           onClick={() => openEtherscan(log.txHash)}
-                          className="flex items-center space-x-2 px-3 py-1 bg-primary-100 dark:bg-primary-500/20 hover:bg-primary-200 dark:hover:bg-primary-500/30 text-primary-700 dark:text-primary-400 rounded-lg transition-colors duration-200"
+                          disabled={!log.txHash || !log.txHash.startsWith('0x')}
+                          className="flex items-center space-x-2 px-3 py-1 bg-primary-100 dark:bg-primary-500/20 hover:bg-primary-200 dark:hover:bg-primary-500/30 text-primary-700 dark:text-primary-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="text-sm">View on Etherscan</span>
                           <ExternalLinkIcon />

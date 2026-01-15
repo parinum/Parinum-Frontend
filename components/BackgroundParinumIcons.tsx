@@ -57,13 +57,11 @@ const URL_LIGHT = resolveStaticUrl(ParinumLight)
 
 // Build a shuffled list of srcs with a strict 50/50 split (if odd, we drop one)
 const buildSrcList = (count: number): string[] => {
-	const evenCount = count % 2 === 0 ? count : count - 1
-	const half = evenCount / 2
-	const list = [
-		...Array(half).fill(URL_DARK),
-		...Array(half).fill(URL_LIGHT),
-	]
-	// Fisher–Yates shuffle using our PRNG
+	// Build a list using only the dark icon (visible on light backgrounds)
+	// as requested by the user to replace white tokens.
+	const list = Array(count).fill(URL_DARK)
+	
+	// Fisher–Yates shuffle (redundant if all same, but keeping structure if we add back mixed icons)
 	for (let i = list.length - 1; i > 0; i--) {
 		const j = Math.floor(rand() * (i + 1))
 		;[list[i], list[j]] = [list[j], list[i]]

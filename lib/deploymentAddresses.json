@@ -2,97 +2,98 @@
   "1": {
     "name": "ethereum",
     "chainId": 1,
-    "timestamp": "2026-01-13T13:37:09.535Z",
-    "DevWallet": "0x4B131D8f1A6172C1D022B825fCae375122AC207e",
-    "Timelock": "0xB7b8738297d4a91F08d9Ff18E4bA5eEDB21522C2",
-    "PRM": "0xcdb2dd3D8b1C8f2b5f8ef735edd6F3eC53E896D3",
-    "Governor": "0x1b53D58fFC6e69e6589a1A42eDf363584c0760f7",
-    "MainnetGovernanceRelay": "0x10FcD639d832188e94c50eD1C4C3A9F6403a0a64",
-    "FeeCollector": "0x0b4868Dbdfb981a4b26eE5d670739Bc03b16cd9c",
-    "Factory": "0x6706EB14Aa62f96F605A8492063c810C2a411e9d",
-    "Clone": "0x71498Ed008E4C968551e26eB4B803631241B5D26",
-    "RewardsPool": "0x3b0f2B6485b9C16B28b268a2CEef5BD7231FFB4d",
-    "PRMICO": "0x0be43FA2FB20662D0a086c7596679dd8CCac65f9"
+    "timestamp": "2026-01-15T14:42:06.372Z",
+    "DevWallet": "0xC0aE2FB4A949984414400aCc904142DC9f316966",
+    "Timelock": "0x650Ddc2c9914A0eEB51e7F784e56B758c6cF6DdF",
+    "RewardsHolder": "0x3BA71a481B9DfabDa2B0504b6835fd81dbf80500",
+    "PRM": "0x39e2EFf2eC0f9Df1c2Ca0f0c3692891a92329810",
+    "Governor": "0x33Fd4c6C58e9e5A6262d6059072e8C79ef886e25",
+    "MainnetGovernanceRelay": "0x28C6b77fF68D73A6f7aF90186f1dce038eB2b966",
+    "FeeCollector": "0x707e48bddE88440B80E38b4047aD9Ad08d29BF13",
+    "Factory": "0xa02d07C3CF2B8824Db5C5157485c13688448000d",
+    "Clone": "0x18Ec8da80eF486eE30900aAe6643Cb4fee76d424",
+    "RewardsPool": "0x9E6512F4f607D6cba5c9A7373eA49330B91D47B1",
+    "PRMICO": "0x90972578bF491FB369B62A1f34dd76B01eA54573"
   },
   "10": {
     "name": "optimism",
     "chainId": 10,
-    "timestamp": "2026-01-13T13:37:44.067Z",
+    "timestamp": "2026-01-15T14:42:42.902Z",
     "GovernanceReceiver": "0x45663dC77256720806C84d10503Ee1780BA95106",
     "FeeCollector": "0x2D893fc4bD1Add90E0D957C5e2Ef3b82a71c55b4",
     "Factory": "0xA37105D3879c3F9Fe65ab498406b6624Ed683b42",
-    "Clone": "0xEBdb4a0143882Bd10B6F5d8a95F00ad2a7B3e332"
+    "Clone": "0x597F7CF8596081cc90C188d0717A822f04009FFf"
   },
   "25": {
     "name": "cronos",
     "chainId": 25,
-    "timestamp": "2026-01-13T13:37:37.175Z",
+    "timestamp": "2026-01-15T14:42:35.639Z",
     "GovernanceReceiver": "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
     "FeeCollector": "0x851356ae760d987E095750cCeb3bC6014560891C",
     "Factory": "0x95401dc811bb5740090279Ba06cfA8fcF6113778",
-    "Clone": "0x998abeb3E57409262aE5b751f60747921B33613E"
+    "Clone": "0x4826533B4897376654Bb4d4AD88B7faFD0C98528"
   },
   "56": {
     "name": "bsc",
     "chainId": 56,
-    "timestamp": "2026-01-13T13:37:16.972Z",
-    "GovernanceReceiver": "0xc779AA542377CB222067a3AfEe533cE12BfED6Ca",
-    "FeeCollector": "0xA3245fAe3e3d7C92591C175d19c2FD7D1Fe58677",
-    "Factory": "0x9Aaa0B7600d370eED7E710D8C698D5E17c1baD9E",
-    "Clone": "0xdd4876B394ecb7dE4eB33f7168235c61d3dEBEa8"
+    "timestamp": "2026-01-15T14:42:13.901Z",
+    "GovernanceReceiver": "0x9a1dc68Cf96508854eE24Dd9Ae5cbebE1B3a3Db8",
+    "FeeCollector": "0x9e12E2B3ca415aDA87fe177b391F65ea7f688eB5",
+    "Factory": "0x36a879D2395D01f7330F694AA981155f167287F5",
+    "Clone": "0x650Ddc2c9914A0eEB51e7F784e56B758c6cF6DdF"
   },
   "130": {
     "name": "unichain",
     "chainId": 130,
-    "timestamp": "2026-01-13T13:37:47.358Z",
+    "timestamp": "2026-01-15T14:42:46.412Z",
     "GovernanceReceiver": "0x8bEe2037448F096900Fd9affc427d38aE6CC0350",
     "FeeCollector": "0x942ED2fa862887Dc698682cc6a86355324F0f01e",
     "Factory": "0xcC4c41415fc68B2fBf70102742A83cDe435e0Ca7",
-    "Clone": "0xa722bdA6968F50778B973Ae2701e90200C564B49"
+    "Clone": "0x967AB65ef14c58bD4DcfFeaAA1ADb40a022140E5"
   },
   "137": {
     "name": "polygon",
     "chainId": 137,
-    "timestamp": "2026-01-13T13:37:29.179Z",
-    "GovernanceReceiver": "0xDB0eE2dadd1C8d12B42e7AdCdCFf244FBe19BbdC",
-    "FeeCollector": "0x84BDD4e88F4c0aA5B1298bbEa38Fe7Be6B009367",
-    "Factory": "0x25AefA42D9fD0117f0C7Ae0465871051725d4ac1",
-    "Clone": "0x8a3bD8E5755aD0089b6C93878fe36328bcF7ca32"
+    "timestamp": "2026-01-15T14:42:28.227Z",
+    "GovernanceReceiver": "0xa32e4D37939353B76bd874C53ED1E017ccfA5536",
+    "FeeCollector": "0x6Fbe7a0D75B1581619C0e1D5d46d67279a0E1cE3",
+    "Factory": "0xfDf92e707d87ED4d3482Ac73Df9ed47979B4e37f",
+    "Clone": "0x433A6f1E60561d8807866d3d279Bebfaaf4E5FfB"
   },
   "8453": {
     "name": "base",
     "chainId": 8453,
-    "timestamp": "2026-01-13T13:37:23.623Z",
+    "timestamp": "2026-01-15T14:42:20.712Z",
     "GovernanceReceiver": "0xe9d0f7cBa0Bd88E7ACF838fd47ecf4Ef2A3eD41C",
     "FeeCollector": "0x079F0da19085A2E1B222E3b5B41D818C1c3D4243",
     "Factory": "0x5951887E444A1DFe8602D390a5E283aC0cCCe24A",
-    "Clone": "0x69478eCdF5ad229673Bd7A878108BeE20b04dCBc"
+    "Clone": "0xE02828281C7f3af971C7b545F32f2A399C4c07b4"
   },
   "42161": {
     "name": "arbitrum",
     "chainId": 42161,
-    "timestamp": "2026-01-13T13:37:20.341Z",
+    "timestamp": "2026-01-15T14:42:17.296Z",
     "GovernanceReceiver": "0x669528b2bCd1048873d70D03e45Bb08d0be4Dd62",
     "FeeCollector": "0xc625004f6E8B9bCf5aa575c541e9215B001c4c6e",
     "Factory": "0xf911Dd22D43862260600529B73e51Cb90Fe1C389",
-    "Clone": "0x8f25f99bC0341A9fc144E142Cf487cb0fFC4d088"
+    "Clone": "0xFDa56d378FdB7C59f62e4E970c346e647d7fFd97"
   },
   "43114": {
     "name": "avalanche",
     "chainId": 43114,
-    "timestamp": "2026-01-13T13:37:32.515Z",
+    "timestamp": "2026-01-15T14:42:31.818Z",
     "GovernanceReceiver": "0x69eB226983E10D7318816134cd44BE3023dC74cd",
     "FeeCollector": "0x29e95B6bbCd23fbF66e9d8ee2029564A734560De",
     "Factory": "0x3358F984e9B3CBBe976eEFE9B6fb92a214162932",
-    "Clone": "0x3Aa338c8d5E6cefE95831cD0322b558677abA0f1"
+    "Clone": "0x267fB71b280FB34B278CedE84180a9A9037C941b"
   },
   "59144": {
     "name": "linea",
     "chainId": 59144,
-    "timestamp": "2026-01-13T13:37:40.704Z",
+    "timestamp": "2026-01-15T14:42:39.506Z",
     "GovernanceReceiver": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
     "FeeCollector": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
     "Factory": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
-    "Clone": "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E"
+    "Clone": "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB"
   }
 }

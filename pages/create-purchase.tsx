@@ -6,10 +6,15 @@ import { createPurchase } from '@/lib/functions'
 import { getParinumNetworkConfig } from '@/lib/parinum'
 import Image, { type StaticImageData } from 'next/image'
 import { ethers } from 'ethers'
-import EthIcon from 'cryptocurrency-icons/svg/white/eth.svg'
-import DaiIcon from 'cryptocurrency-icons/svg/white/dai.svg'
-import WbtcIcon from 'cryptocurrency-icons/svg/white/wbtc.svg'
-import UsdcIcon from 'cryptocurrency-icons/svg/white/usdc.svg'
+import { useChainId } from 'wagmi'
+import EthIcon from 'cryptocurrency-icons/svg/color/eth.svg'
+import DaiIcon from 'cryptocurrency-icons/svg/color/dai.svg'
+import WbtcIcon from 'cryptocurrency-icons/svg/color/wbtc.svg'
+import UsdcIcon from 'cryptocurrency-icons/svg/color/usdc.svg'
+import UsdtIcon from 'cryptocurrency-icons/svg/color/usdt.svg'
+import BnbIcon from 'cryptocurrency-icons/svg/color/bnb.svg'
+import MaticIcon from 'cryptocurrency-icons/svg/color/matic.svg'
+import GenericIcon from 'cryptocurrency-icons/svg/color/generic.svg'
 
 const InfoIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,59 +34,78 @@ interface Token {
   icon: StaticImageData
 }
 
+// Token configurations
+const ethTokens = [
+  { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
+  { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', icon: UsdtIcon },
+  { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', icon: DaiIcon },
+  { symbol: 'WBTC', address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', icon: WbtcIcon },
+]
+const bscTokens = [
+  { symbol: 'BNB', address: ethers.ZeroAddress, icon: BnbIcon },
+  { symbol: 'USDC', address: '0x8AC76A51CC950D9822D68B83FE1AD97B32CD580D', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', icon: UsdtIcon },
+]
+const arbTokens = [
+  { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
+  { symbol: 'USDC', address: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', icon: UsdtIcon },
+]
+const baseTokens = [
+  { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
+  { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bDa02913', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', icon: UsdtIcon },
+]
+const polygonTokens = [
+  { symbol: 'MATIC', address: ethers.ZeroAddress, icon: MaticIcon },
+  { symbol: 'USDC.e', address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', icon: UsdtIcon },
+]
+const lineaTokens = [
+  { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
+  { symbol: 'USDC', address: '0x176211869cA2b568f2A7D4EE941E073a821EE1ff', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0xA219C472f336153807D306158287110C7291B74C', icon: UsdtIcon },
+]
+const optimismTokens = [
+  { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
+  { symbol: 'USDC', address: '0x0b2c639c533813f4aa9d7837caf62653d097ff85', icon: UsdcIcon },
+  { symbol: 'USDT', address: '0x94b008aA00579c1307B0EF2c499aD98a8ce98778', icon: UsdtIcon },
+]
+const unichainTokens = [
+  { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
+  { symbol: 'USDC', address: '0x078D782b760474a361dDA0AF3839290b0EF57AD6', icon: UsdcIcon },
+  { symbol: 'USDT', address: ethers.ZeroAddress, icon: UsdtIcon }, // Placeholder for Unichain
+]
+
 const tokenOptionsByChain: Record<number, Token[]> = {
-  1: [
-    { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', icon: UsdcIcon },
-    { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', icon: DaiIcon },
-    { symbol: 'WBTC', address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', icon: WbtcIcon },
-  ],
-  56: [
-    { symbol: 'BNB', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0x8AC76A51CC950D9822D68B83FE1AD97B32CD580D', icon: UsdcIcon },
-  ],
-  42161: [
-    { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', icon: UsdcIcon },
-  ],
-  8453: [
-    { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bDa02913', icon: UsdcIcon },
-  ],
-  137: [
-    { symbol: 'MATIC', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC.e', address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', icon: UsdcIcon },
-  ],
-  43114: [
-    { symbol: 'AVAX', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', icon: UsdcIcon },
-  ],
-  25: [
-    { symbol: 'CRO', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0xc21223249CA28397B4B6541dfFaEcC539BfF0c59', icon: UsdcIcon },
-  ],
-  59144: [
-    { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0x176211869cA2b568f2A7D4EE941E073a821EE1ff', icon: UsdcIcon },
-  ],
-  10: [
-    { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0x0b2c639c533813f4aa9d7837caf62653d097ff85', icon: UsdcIcon },
-  ],
-  130: [
-    { symbol: 'ETH', address: ethers.ZeroAddress, icon: EthIcon },
-    { symbol: 'USDC', address: '0x078D782b760474a361dDA0AF3839290b0EF57AD6', icon: UsdcIcon },
-  ],
+  1: ethTokens,
+  31337: ethTokens, // Local Ethereum
+  56: bscTokens,
+  31338: bscTokens, // Local BSC
+  42161: arbTokens,
+  31339: arbTokens, // Local Arbitrum
+  8453: baseTokens,
+  31340: baseTokens, // Local Base
+  137: polygonTokens,
+  31341: polygonTokens, // Local Polygon
+  59144: lineaTokens,
+  31344: lineaTokens, // Local Linea
+  10: optimismTokens,
+  31345: optimismTokens, // Local Optimism
+  130: unichainTokens,
+  31346: unichainTokens, // Local Unichain
 }
 
-const getTokensForChain = (chainId?: number | null) =>
-  tokenOptionsByChain[chainId ?? 1] || tokenOptionsByChain[1]
+const getTokensForChain = (chainId: number) =>
+  tokenOptionsByChain[chainId] || tokenOptionsByChain[1]
 
 export default function CreatePurchase() {
+  const chainId = useChainId()
   const [seller, setSeller] = useState('')
   const [price, setPrice] = useState('')
   const [collateral, setCollateral] = useState('')
-  const defaultTokens = getTokensForChain()
+  const defaultTokens = getTokensForChain(chainId)
   const [tokens, setTokens] = useState<Token[]>(defaultTokens)
   const [tokenAddress, setTokenAddress] = useState(
     defaultTokens[0]?.address || ethers.ZeroAddress
@@ -92,12 +116,15 @@ export default function CreatePurchase() {
     defaultTokens[0]?.symbol || 'Select Token'
   )
   const [isLoading, setIsLoading] = useState(false)
-  const [chainId, setChainId] = useState<number | null>(null)
   const [networkName, setNetworkName] = useState(
-    getParinumNetworkConfig(1)?.name || 'Ethereum'
+    getParinumNetworkConfig(chainId)?.name || 'Ethereum'
   )
 
   const dropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Find the currently selected token object to display its icon
+  const selectedTokenObj = tokens.find(t => t.symbol === selectedToken) || 
+    (tokenAddress !== ethers.ZeroAddress ? tokens.find(t => t.address === tokenAddress) : tokens[0])
 
   const purchaseSteps = [
     { id: 'create', label: 'Create', active: true },
@@ -108,35 +135,19 @@ export default function CreatePurchase() {
   ]
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !(window as any).ethereum) return
-    const ethereum = (window as any).ethereum
+    const config = getParinumNetworkConfig(chainId)
+    setNetworkName(config?.name || 'Unsupported network')
 
-    const applyChain = (hexId: string) => {
-      const id = parseInt(hexId, 16)
-      setChainId(id)
-      const config = getParinumNetworkConfig(id)
-      setNetworkName(config?.name || 'Unsupported network')
-
-      const chainTokens = getTokensForChain(id)
-      setTokens(chainTokens)
-      if (chainTokens.length) {
-        setSelectedToken(chainTokens[0].symbol)
-        setTokenAddress(chainTokens[0].address)
-      } else {
-        setSelectedToken('Select Token')
-        setTokenAddress(ethers.ZeroAddress)
-      }
+    const chainTokens = getTokensForChain(chainId)
+    setTokens(chainTokens)
+    if (chainTokens.length) {
+      setSelectedToken(chainTokens[0].symbol)
+      setTokenAddress(chainTokens[0].address)
+    } else {
+      setSelectedToken('Select Token')
+      setTokenAddress(ethers.ZeroAddress)
     }
-
-    ethereum
-      .request({ method: 'eth_chainId' })
-      .then((hexId: string) => applyChain(hexId))
-      .catch(() => {})
-
-    const handleChainChanged = (hexId: string) => applyChain(hexId)
-    ethereum.on('chainChanged', handleChainChanged)
-    return () => ethereum.removeListener('chainChanged', handleChainChanged)
-  }, [])
+  }, [chainId])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -191,13 +202,6 @@ export default function CreatePurchase() {
             <h1 className="text-3xl md:text-4xl font-bold text-secondary-900 dark:text-white mb-4">
               Create Secure Purchase
             </h1>
-            <p className="text-secondary-600 dark:text-dark-300">
-              Set up a secure escrow transaction with built-in buyer protection
-            </p>
-            <p className="text-sm text-primary-600 dark:text-primary-400 mt-2">
-              Network: {networkName}
-              {chainId ? ` (chain ${chainId})` : ''}
-            </p>
           </div>
 
           {/* Transaction Steps */}
@@ -209,7 +213,7 @@ export default function CreatePurchase() {
               {/* Seller Address */}
               <div className="space-y-3">
                 <label className="flex items-center text-secondary-900 dark:text-white font-medium">
-                  Seller Address
+                  Wallet ID
                   <div className="group relative ml-2">
                     <InfoIcon />
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-secondary-800 dark:bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-secondary-200 dark:text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
@@ -244,7 +248,17 @@ export default function CreatePurchase() {
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="w-full px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 flex items-center justify-between"
                   >
-                    <span>{selectedToken}</span>
+                    <div className="flex items-center space-x-2">
+                       {selectedTokenObj && (
+                        <Image 
+                          src={selectedTokenObj.icon} 
+                          alt={`${selectedTokenObj.symbol} icon`} 
+                          width={24} 
+                          height={24} 
+                        />
+                       )}
+                       <span className="font-medium">{selectedToken}</span>
+                    </div>
                     <ChevronDownIcon />
                   </button>
                   

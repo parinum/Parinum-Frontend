@@ -3,7 +3,8 @@ import { motion } from 'framer-motion'
 import Layout from '@/components/Layout'
 import PurchaseStepsNavigation from '@/components/PurchaseStepsNavigation'
 import { useRouter } from 'next/router'
-import { releasePurchase } from '@/lib/functions'
+import { releasePurchase, getPurchaseDetails, type PurchaseDetails } from '@/lib/functions'
+import PurchaseDetailsCard from '@/components/PurchaseDetailsCard'
 
 const InfoIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,6 +20,8 @@ const CheckIcon = () => (
 
 export default function ReleasePurchase() {
   const [purchaseId, setPurchaseId] = useState('')
+  const [purchaseDetails, setPurchaseDetails] = useState<PurchaseDetails | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -32,6 +35,36 @@ export default function ReleasePurchase() {
     { id: 'release', label: 'Release', active: true },
     { id: 'logs', label: 'Logs', active: false },
   ]
+
+  const handleGetDetails = async () => {
+    if (showDetails) {
+      setShowDetails(false)
+      return
+    }
+
+    if (!purchaseId) {
+      setMessage('Please enter a purchase ID')
+      return
+    }
+    setIsLoading(true)
+    setMessage('')
+    try {
+      const result = await getPurchaseDetails(purchaseId)
+      if (result.success && result.data) {
+        setPurchaseDetails(result.data)
+      } else {
+        setMessage(result.error || 'Purchase not found')
+        setPurchaseDetails(null)
+      }
+      setShowDetails(true)
+    } catch (e) {
+      setMessage(`Error fetching details: ${e}`)
+      setPurchaseDetails(null)
+      setShowDetails(true)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,15 +129,28 @@ export default function ReleasePurchase() {
                     </div>
                   </div>
                 </label>
-                <input
-                  type="text"
-                  value={purchaseId}
-                  onChange={(e) => setPurchaseId(e.target.value)}
-                  placeholder="0x1234567890abcdef1234567890abcdef12345678"
-                  className="w-full px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:border-primary-500 transition-colors duration-200 font-mono text-sm"
-                  required
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={purchaseId}
+                    onChange={(e) => setPurchaseId(e.target.value)}
+                    placeholder="0x1234567890abcdef1234567890abcdef12345678"
+                    className="flex-1 px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:border-primary-500 transition-colors duration-200 font-mono text-sm"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGetDetails}
+                    disabled={isLoading}
+                    className="px-6 py-3 bg-slate-200 dark:bg-dark-700 text-slate-800 dark:text-white font-semibold rounded-xl hover:bg-slate-300 dark:hover:bg-dark-600 transition-colors whitespace-nowrap"
+                  >
+                    {showDetails ? 'Hide Details' : 'Show Details'}
+                  </button>
+                </div>
               </div>
+
+              {showDetails && <PurchaseDetailsCard details={purchaseDetails} purchaseId={purchaseId} />}
+
 
               {/* Submit Button */}
               <button

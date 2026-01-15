@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { config } from './wagmiConfig'
-import { getConnectorClient } from '@wagmi/core'
+import { getConnectorClient, getPublicClient } from '@wagmi/core'
 import {
   GovernorContract__factory,
   PRMICO__factory,
@@ -10,6 +10,8 @@ import {
 import {
   getParinumFactoryInterface,
   getParinumNetworkConfig,
+  getCoreContractAddresses,
+  supportedParinumChainIds,
 } from './parinum'
 
 // Lightweight in-memory cache with TTL to reduce repeated read calls
@@ -68,9 +70,9 @@ export interface StakeData {
   isAvailable: boolean
 }
 
-// PSC Funding-related interfaces
+// PRM Funding-related interfaces
 export interface IcoInfo {
-  poolPSC: string
+  poolPRM: string
   poolETH: string
   deploymentTime: string
   timeLimit: string
@@ -82,7 +84,7 @@ export interface AccountIcoInfo {
   contribution: string
   weightedContribution: string
   ethReceived: string
-  pscWithdrawn: string
+  prmWithdrawn: string
 }
 
 // Governance-related interfaces
@@ -106,23 +108,44 @@ export interface VotingPower {
   delegatedBalance: string
 }
 
-// Contract addresses (replace with actual deployed addresses)
-const defaultContractAddresses = {
-  ico: "0x17f4B55A352Be71CC03856765Ad04147119Aa09B",
-  prm: "0x3Aa338c8d5E6cefE95831cD0322b558677abA0f1",
-  rewardsPool: "0x27f7785b17c6B4d034094a1B16Bc928bD697f386",
-  governor: "0x267fB71b280FB34B278CedE84180a9A9037C941b",
-  timelock: "0x6858dF5365ffCbe31b5FE68D9E6ebB81321F7F86"
+export interface TransactionLog {
+  id: string
+  timestamp: Date
+  action: string
+  status: 'success' | 'pending' | 'failed'
+  txHash: string
+  from: string
+  to: string
+  amount?: string
+  gasUsed?: string
+  message?: string
+  isError?: boolean
 }
 
 const getCoreAddresses = (chainId?: number | null) => {
-  const net = getParinumNetworkConfig(chainId || 1)
+  const effectiveChainId = chainId || 1
+  const net = getParinumNetworkConfig(effectiveChainId)
   const envKey = net?.envKey
-  const pick = (key: string) =>
-    (envKey && process.env[`NEXT_PUBLIC_PARINUM_${key}_${envKey}`]?.trim()) ||
-    process.env[`NEXT_PUBLIC_PARINUM_${key}`]?.trim() ||
-    (defaultContractAddresses as any)[key.toLowerCase()] ||
-    ''
+  let deployedAddresses = getCoreContractAddresses(effectiveChainId)
+
+  // Fallback to Chain 1 if addresses not found for current chain
+  if (!deployedAddresses) {
+    deployedAddresses = getCoreContractAddresses(1)
+  }
+  
+  const pick = (key: string) => {
+    const envVal = (envKey && process.env[`NEXT_PUBLIC_PARINUM_${key}_${envKey}`]?.trim()) ||
+    process.env[`NEXT_PUBLIC_PARINUM_${key}`]?.trim()
+
+    if (envVal) return envVal
+
+    if (deployedAddresses) {
+      if (key === 'REWARDS_POOL') return deployedAddresses.rewardsPool
+      return (deployedAddresses as any)[key.toLowerCase()] || ''
+    }
+
+    return ''
+  }
 
   return {
     ico: pick('ICO'),
@@ -133,12 +156,20 @@ const getCoreAddresses = (chainId?: number | null) => {
   }
 }
 
+const defaultIds = getCoreAddresses(1)
+
 export const contractAddresses = {
-  crowdfunder: defaultContractAddresses.ico,
-  psc: defaultContractAddresses.prm,
-  rewardsPool: defaultContractAddresses.rewardsPool,
-  governor: defaultContractAddresses.governor,
-  timelock: defaultContractAddresses.timelock,
+  crowdfunder: defaultIds.ico,
+  prm: defaultIds.prm,
+  rewardsPool: defaultIds.rewardsPool,
+  governor: defaultIds.governor,
+  timelock: defaultIds.timelock,
+}
+
+const getRpcUrlForChain = (chainId?: number | null) => {
+  const chain = config.chains.find((c) => c.id === (chainId || 0))
+  const urls = chain?.rpcUrls?.default?.http || []
+  return urls[0]
 }
 
 // Contract ABIs (simplified - you should import the full ABIs)
@@ -176,7 +207,7 @@ const getRewardsPoolContext = async () => {
   if (!addresses.rewardsPool) {
     throw new Error('RewardsPool address not configured')
   }
-  const signerAddress = await ctx.signer.getAddress()
+  const signerAddress = await ctx.signer?.getAddress()
   return {
     ...ctx,
     poolAddress: addresses.rewardsPool,
@@ -217,8 +248,33 @@ export const initProvider = async () => {
     
     return { provider, signer, account: account.address, chainId: chain.id }
   } catch (error) {
-    console.error('Failed to initialize provider:', error)
-    throw error
+    // Fallback to public provider if wallet not connected
+    try {
+      const client = getPublicClient(config)
+      if (!client) throw error
+
+      const { chain, transport } = client
+      const network = {
+        chainId: chain.id,
+        name: chain.name,
+        ensAddress: (chain.contracts as any)?.ensRegistry?.address,
+      }
+      
+      const provider = new ethers.JsonRpcProvider(
+        (transport as any).url || chain.rpcUrls.default.http[0], 
+        network
+      )
+      
+      return { 
+        provider, 
+        signer: undefined, 
+        account: undefined, 
+        chainId: chain.id 
+      }
+    } catch (fallbackError) {
+      console.error('Failed to initialize provider:', error)
+      throw error
+    }
   }
 }
 
@@ -373,6 +429,7 @@ export const confirmPurchase = async (purchaseId: string): Promise<TransactionRe
   try {
     const { signer, provider, chainId: initialChainId } = await initProvider()
     const network = await provider.getNetwork()
+    console.log('Network:', network)
     const chainId = initialChainId || Number(network.chainId)
     const parinumConfig = getParinumNetworkConfig(chainId)
 
@@ -395,8 +452,8 @@ export const confirmPurchase = async (purchaseId: string): Promise<TransactionRe
       purchase.state()
     ])
 
-    const signerAddress = await signer.getAddress()
-    if (seller.toLowerCase() !== signerAddress.toLowerCase()) {
+    const signerAddress = await signer?.getAddress()
+    if (seller.toLowerCase() !== signerAddress?.toLowerCase()) {
       return { 
         success: false, 
         error: `Unauthorized: Only the seller can confirm this purchase. Connected: ${signerAddress}, Seller: ${seller}` 
@@ -462,8 +519,8 @@ export const releasePurchase = async (purchaseId: string): Promise<TransactionRe
       purchase.state()
     ])
 
-    const signerAddress = await signer.getAddress()
-    if (buyer.toLowerCase() !== signerAddress.toLowerCase()) {
+    const signerAddress = await signer?.getAddress()
+    if (buyer.toLowerCase() !== signerAddress?.toLowerCase()) {
       return { 
         success: false, 
         error: `Unauthorized: Only the buyer can release this purchase. Connected: ${signerAddress}, Buyer: ${buyer}` 
@@ -520,8 +577,8 @@ export const abortPurchase = async (purchaseId: string): Promise<TransactionResu
       purchase.state()
     ])
 
-    const signerAddress = await signer.getAddress()
-    if (buyer.toLowerCase() !== signerAddress.toLowerCase()) {
+    const signerAddress = await signer?.getAddress()
+    if (buyer.toLowerCase() !== signerAddress?.toLowerCase()) {
       return { 
         success: false, 
         error: `Unauthorized: Only the buyer can abort this purchase. Connected: ${signerAddress}, Buyer: ${buyer}` 
@@ -552,11 +609,26 @@ export const abortPurchase = async (purchaseId: string): Promise<TransactionResu
 }
 
 // Get purchase details
-export const getPurchaseDetails = async (purchaseId: string): Promise<PurchaseDetails | null> => {
+export const getPurchaseDetails = async (purchaseId: string): Promise<{ success: boolean, data?: PurchaseDetails, error?: string }> => {
   try {
     const { provider, chainId } = await resolveChainContext()
     const parinumConfig = getParinumNetworkConfig(chainId)
-    if (!parinumConfig) return null
+    if (!parinumConfig) return { success: false, error: 'Network configuration not found' }
+
+    // Validate address
+    if (!ethers.isAddress(purchaseId)) {
+        return { success: false, error: 'Invalid purchase address format' }
+    }
+
+    try {
+      const code = await provider.getCode(purchaseId)
+      if (code === '0x') {
+         return { success: false, error: 'No contract found at this address' }
+      }
+    } catch (err: any) {
+       console.error("Error fetching code:", err)
+       return { success: false, error: `Failed to verify contract: ${err.message || err}` }
+    }
 
     const purchase = new ethers.Contract(
       purchaseId,
@@ -564,16 +636,14 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<PurchaseDe
       provider
     )
 
-    const [buyer, seller, priceRaw, collateralRaw, tokenAddr, state, latestBlock] =
-      await Promise.all([
-        purchase.buyer(),
-        purchase.seller(),
-        purchase.price(),
-        purchase.collateral(),
-        purchase.tokenAddress(),
-        purchase.state(),
-        provider.getBlock('latest')
-      ])
+    // Fetch properties sequentially to avoid RPC rate limits
+    const buyer = await purchase.buyer()
+    const seller = await purchase.seller()
+    const priceRaw = await purchase.price()
+    const collateralRaw = await purchase.collateral()
+    const tokenAddr = await purchase.tokenAddress()
+    const state = await purchase.state()
+    const latestBlock = await provider.getBlock('latest')
 
     const tokenIsNative = isNativeTokenAddress(tokenAddr)
     let decimals = 18
@@ -593,7 +663,7 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<PurchaseDe
       3: 'failed',
     }
 
-    return {
+    const data: PurchaseDetails = {
       id: purchaseId,
       seller,
       buyer,
@@ -605,99 +675,153 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<PurchaseDe
         ? new Date(Number(latestBlock.timestamp) * 1000)
         : new Date(),
     }
+    
+    return { success: true, data }
+
   } catch (error) {
     console.error('Failed to get purchase details:', error)
-    return null
+    return { success: false, error: formatEthersError(error) }
   }
 }
 
-// Get transaction logs for a purchase
-export const getPurchaseLogs = async (purchaseId: string) => {
+// Get transaction logs for a purchase wallet (factory events)
+export const getPurchaseLogs = async (walletAddress: string): Promise<TransactionLog[]> => {
   try {
-    const { provider, chainId } = await resolveChainContext()
-    const parinumConfig = getParinumNetworkConfig(chainId)
-    if (!parinumConfig) return []
+    const { provider, chainId } = await initProvider()
+    const config = getParinumNetworkConfig(chainId)
 
-    const purchase = new ethers.Contract(
-      purchaseId,
-      parinumConfig.cloneAbi,
+    if (!config || !config.factoryAddress) {
+      console.warn('Network config or factory address not found')
+      return []
+    }
+
+    if (!ethers.isAddress(walletAddress)) return []
+
+    const factory = new ethers.Contract(
+      config.factoryAddress,
+      config.factoryAbi,
       provider
     )
 
-    const tokenAddress = await purchase.tokenAddress()
-    const tokenIsNative = isNativeTokenAddress(tokenAddress)
-    let decimals = 18
-    let symbol = tokenIsNative ? parinumConfig.nativeSymbol : 'TOKEN'
-    if (!tokenIsNative) {
-      try {
-        const token = new ethers.Contract(tokenAddress, erc20ABI, provider)
-        decimals = await token.decimals()
-        symbol = await token.symbol()
-      } catch {
-        decimals = 18
-        symbol = 'TOKEN'
-      }
+    const fromBlock = config.deploymentBlock || 0
+    const currentBlock = await provider.getBlockNumber()
+    
+    // Chunk size to avoid RPC limits (some RPCs limit to 1000 blocks)
+    const CHUNK_SIZE = 800
+
+    // Pre-calculate ranges
+    const ranges: { start: number; end: number }[] = []
+    for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
+      const end = Math.min(start + CHUNK_SIZE - 1, currentBlock)
+      ranges.push({ start, end })
     }
+    console.log(`[getPurchaseLogs] Scanning ${ranges.length} chunks from ${fromBlock} to ${currentBlock}`)
 
-    const createdFilter = purchase.filters?.PurchaseCreated?.()
-    const confirmedFilter = purchase.filters?.PurchaseConfirmed?.()
-    const releasedFilter = purchase.filters?.PurchaseReleased?.()
-    const abortedFilter = purchase.filters?.PurchaseAborted?.()
-
-    const createdLogs = createdFilter
-      ? await purchase.queryFilter(createdFilter, 0)
-      : []
-    const confirmedLogs = confirmedFilter
-      ? await purchase.queryFilter(confirmedFilter, 0)
-      : []
-    const releasedLogs = releasedFilter
-      ? await purchase.queryFilter(releasedFilter, 0)
-      : []
-    const abortedLogs = abortedFilter
-      ? await purchase.queryFilter(abortedFilter, 0)
-      : []
-
-    const logs = [
-      ...createdLogs.map((log) => ({ type: 'Purchase Created', log })),
-      ...confirmedLogs.map((log) => ({ type: 'Purchase Confirmed', log })),
-      ...releasedLogs.map((log) => ({ type: 'Purchase Released', log })),
-      ...abortedLogs.map((log) => ({ type: 'Purchase Aborted', log })),
+    // Fetch logs for the 4 key events
+    const topics = [
+      { name: 'BuyerUnresolvedPurchase', type: 'BuyerUnresolved' },
+      { name: 'SellerUnresolvedPurchase', type: 'SellerUnresolved' },
+      { name: 'BuyerCompletedPurchase', type: 'BuyerCompleted' },
+      { name: 'SellerCompletedPurchase', type: 'SellerCompleted' },
     ]
 
-    const enriched = await Promise.all(
-      logs.map(async ({ type, log }, idx) => {
-        const block = await provider.getBlock(log.blockNumber)
-        const receipt = await provider.getTransactionReceipt(
-          log.transactionHash
-        )
-        const args: any = (log as any).args || {}
-        const price = args.price ?? args.ethValue ?? args.collateral ?? 0n
-        const amount = ethers.formatUnits(price, decimals)
+    const allLogsPromises = topics.map(async (topic) => {
+      try {
+        // Access filters dynamically
+        const filterCreator = (factory.filters as any)[topic.name]
+        if (typeof filterCreator !== 'function') return []
+        
+        // We filter by wallet address using the topic filter if possible
+        const filter = await filterCreator(walletAddress)
+        
+        const logs: any[] = []
+        
+        // Process chunks in batches of 5 to improve speed while respecting limits
+        const BATCH_SIZE = 5
+        for (let i = 0; i < ranges.length; i += BATCH_SIZE) {
+          const batch = ranges.slice(i, i + BATCH_SIZE)
+          await Promise.all(batch.map(async ({ start, end }) => {
+            try {
+              const chunkLogs = await factory.queryFilter(filter, start, end)
+              logs.push(...chunkLogs)
+            } catch (chunkError) {
+              console.warn(`Failed to fetch logs for ${topic.name} in range ${start}-${end}:`, chunkError)
+            }
+          }))
+        }
 
-        return {
-          id: `${idx + 1}`,
-          timestamp: block?.timestamp
+        return logs.map((l) => ({ l, type: topic.type }))
+      } catch (e) {
+        console.warn(`Failed to fetch logs for ${topic.name}`, e)
+        return []
+      }
+    })
+
+    const results = await Promise.all(allLogsPromises)
+    const allLogs = results.flat()
+    console.log(allLogs)
+
+
+    // Sort by block number descending
+    allLogs.sort((a, b) => b.l.blockNumber - a.l.blockNumber)
+
+    // Enrich logs
+    const enrichedLogs = await Promise.all(
+      allLogs.map(async ({ l, type }) => {
+        try {
+          const log = l as ethers.EventLog
+          const [block, receipt] = await Promise.all([
+            provider.getBlock(log.blockNumber),
+            provider.getTransactionReceipt(log.transactionHash),
+          ])
+
+          const timestamp = block?.timestamp
             ? new Date(Number(block.timestamp) * 1000)
-            : new Date(),
-          action: type,
-          status: 'success' as const,
-          txHash: log.transactionHash,
-          from: args.buyer || args.seller || '',
-          to: args.seller || args.buyer || '',
-          amount: `${amount} ${symbol}`,
-          gasUsed: receipt?.gasUsed ? receipt.gasUsed.toString() : '0',
+            : new Date()
+
+          let action = 'Unknown'
+          if (type === 'BuyerUnresolved') action = 'Purchase Confirmed (Buyer)'
+          else if (type === 'SellerUnresolved') action = 'Purchase Confirmed (Seller)'
+          else if (type === 'BuyerCompleted') action = 'Purchase Completed (Buyer)'
+          else if (type === 'SellerCompleted') action = 'Purchase Completed (Seller)'
+
+          let amountStr = undefined
+          if (type.includes('Completed') && log.args) {
+            try {
+               const val = (log.args as any).ethValue
+               if (val) {
+                 amountStr = `${ethers.formatEther(val)} ETH`
+               }
+            } catch (e) { /* ignore */ }
+          }
+
+          return {
+            id: `${log.transactionHash}-${log.index}`,
+            timestamp,
+            action,
+            status: receipt?.status === 1 ? 'success' : 'failed',
+            txHash: log.transactionHash,
+            from: receipt?.from || walletAddress,
+            to: receipt?.to || config.factoryAddress,
+            amount: amountStr,
+            gasUsed: receipt?.gasUsed?.toString(),
+            isError: receipt?.status !== 1,
+          } as TransactionLog
+        } catch (e) {
+          console.error('Error processing log', e)
+          return null
         }
       })
     )
 
-    return enriched.sort(
-      (a, b) => (a.timestamp?.getTime?.() || 0) - (b.timestamp?.getTime?.() || 0)
-    )
+    return enrichedLogs.filter((l): l is TransactionLog => l !== null)
   } catch (error) {
-    console.error('Failed to get purchase logs:', error)
+    console.error('getPurchaseLogs error:', error)
     return []
   }
 }
+
+
 
 // Connect wallet
 export const connectWallet = async () => {
@@ -815,6 +939,16 @@ export const getStakeInfo = async (): Promise<StakeInfo> => {
   try {
     const { poolContract, provider, signerAddress } = await getRewardsPoolContext()
     const account = signerAddress
+    
+    if (!account) {
+      return {
+        totalAmount: '0',
+        totalRewardAmount: '0',
+        availableAmount: '0',
+        availableRewardAmount: '0'
+      }
+    }
+
     const latestBlock = await provider.getBlock('latest')
     const now = Number(latestBlock?.timestamp || Math.floor(Date.now() / 1000))
 
@@ -823,7 +957,7 @@ export const getStakeInfo = async (): Promise<StakeInfo> => {
 
     for (let i = 0; i < 10; i++) {
       try {
-        const stake = await poolContract.stakes(account, i)
+        const stake = await poolContract.stakes(account, BigInt(i))
         if (stake.amount === 0n && stake.stakeTime === 0n) break
         totalAmount += stake.amount
         const matured = now - Number(stake.startTime) >= Number(stake.stakeTime)
@@ -852,11 +986,15 @@ export const getStakeInfo = async (): Promise<StakeInfo> => {
   }
 }
 
+
 // Get stake information by index
 export const getStakeInfoByIndex = async (stakeIndex: number): Promise<StakeData | null> => {
   try {
     const { poolContract, provider, signerAddress } = await getRewardsPoolContext()
     const account = signerAddress
+    
+    if (!account) return null
+
     const stake = await poolContract.stakes(account, stakeIndex)
     const latestBlock = await provider.getBlock('latest')
     const now = Number(latestBlock?.timestamp || Math.floor(Date.now() / 1000))
@@ -885,10 +1023,10 @@ export const calculateStakeMultiplier = (stakeTimeInSeconds: number): string => 
   return multiplierValue.toFixed(2)
 }
 
-// PSC Funding Functions
+// PRM Funding Functions
 
-// Buy PSC tokens during ICO
-export const buyPSCTokens = async (referer: string, amount: string): Promise<TransactionResult> => {
+// Buy PRM tokens during ICO
+export const buyPRMTokens = async (referer: string, amount: string, multiplierValue: number): Promise<TransactionResult> => {
   try {
     const { signer, chainId } = await resolveChainContext()
     const { ico } = getCoreAddresses(chainId)
@@ -900,7 +1038,7 @@ export const buyPSCTokens = async (referer: string, amount: string): Promise<Tra
 
     const amountWei = ethers.parseEther(amount || "0")
     const refererAddress = referer ? ethers.getAddress(referer) : ethers.ZeroAddress
-    const multiplier = await icoContract.getMultiplier()
+    const multiplier = ethers.parseEther(multiplierValue.toString())
 
     const tx = await icoContract.buyPRM(refererAddress, multiplier, { value: amountWei })
     const receipt = await tx.wait()
@@ -917,8 +1055,8 @@ export const buyPSCTokens = async (referer: string, amount: string): Promise<Tra
   }
 }
 
-// Claim PSC tokens after ICO ends
-export const claimPSCTokens = async (): Promise<TransactionResult> => {
+// Claim PRM tokens after ICO ends
+export const claimPRMTokens = async (): Promise<TransactionResult> => {
   try {
     const { signer, chainId } = await resolveChainContext()
     const { ico } = getCoreAddresses(chainId)
@@ -954,6 +1092,11 @@ export const getIcoInfo = async (): Promise<IcoInfo> => {
       throw new Error('PRM ICO contract address not configured')
     }
 
+    const code = await provider.getCode(ico)
+    if (code === '0x') {
+      throw new Error(`Contract not deployed at ${ico} on chain ${chainId}`)
+    }
+
     const icoContract = PRMICO__factory.connect(ico, provider)
 
     const [poolPRM, poolETH, deploymentTime, timeLimit, weightedETHRaised] = await Promise.all([
@@ -965,7 +1108,7 @@ export const getIcoInfo = async (): Promise<IcoInfo> => {
     ])
 
     const res: IcoInfo = {
-      poolPSC: ethers.formatEther(poolPRM),
+      poolPRM: ethers.formatEther(poolPRM),
       poolETH: ethers.formatEther(poolETH),
       deploymentTime: deploymentTime.toString(),
       timeLimit: timeLimit.toString(),
@@ -976,14 +1119,13 @@ export const getIcoInfo = async (): Promise<IcoInfo> => {
     return res
   } catch (error) {
     console.error('Failed to get ICO info:', error)
-    // Return mock data for development
     return {
-      poolPSC: '1000000',
-      poolETH: '500',
-      deploymentTime: (Date.now() - 30 * 24 * 60 * 60 * 1000).toString(), // 30 days ago
-      timeLimit: (90 * 24 * 60 * 60).toString(), // 90 days
-      weightedETHRaised: '150',
-      soldAmount: '300000'
+      poolPRM: '0',
+      poolETH: '0',
+      deploymentTime: '0',
+      timeLimit: '0',
+      weightedETHRaised: '0',
+      soldAmount: '0'
     }
   }
 }
@@ -1000,6 +1142,11 @@ export const getAccountIcoInfo = async (account: string): Promise<AccountIcoInfo
       throw new Error('PRM ICO contract address not configured')
     }
 
+    const code = await provider.getCode(ico)
+    if (code === '0x') {
+      throw new Error(`Contract not deployed at ${ico} on chain ${chainId}`)
+    }
+
     const icoContract = PRMICO__factory.connect(ico, provider)
     const contributor = await icoContract.contributors(account)
 
@@ -1007,18 +1154,17 @@ export const getAccountIcoInfo = async (account: string): Promise<AccountIcoInfo
       contribution: ethers.formatEther(contributor.contribution),
       weightedContribution: ethers.formatEther(contributor.weightedContribution),
       ethReceived: ethers.formatEther(contributor.ethReceived),
-      pscWithdrawn: ethers.formatEther(contributor.prmWithdrawn)
+      prmWithdrawn: ethers.formatEther(contributor.prmWithdrawn)
     }
     readCache.set(key, res)
     return res
   } catch (error) {
     console.error('Failed to get account ICO info:', error)
-    // Return mock data for development
     return {
-      contribution: '0.5',
-      weightedContribution: '0.75',
+      contribution: '0',
+      weightedContribution: '0',
       ethReceived: '0',
-      pscWithdrawn: '0'
+      prmWithdrawn: '0'
     }
   }
 }
@@ -1028,14 +1174,14 @@ export const calculateIcoPrice = async (ethAmount: string): Promise<string> => {
   try {
     const icoInfo = await getIcoInfo()
     const poolETH = parseFloat(icoInfo.poolETH)
-    const poolPSC = parseFloat(icoInfo.poolPSC)
+    const poolPRM = parseFloat(icoInfo.poolPRM)
     const ethAmountNum = parseFloat(ethAmount)
     
-    if (poolETH === 0 || poolPSC === 0) return "0"
+    if (poolETH === 0 || poolPRM === 0) return "0"
     
-    // Simple price calculation: PSC tokens = ETH * (poolPSC / poolETH)
-    const pscTokens = ethAmountNum * (poolPSC / poolETH)
-    return pscTokens.toFixed(6)
+    // Simple price calculation: PRM tokens = ETH * (poolPRM / poolETH)
+    const prmTokens = ethAmountNum * (poolPRM / poolETH)
+    return prmTokens.toFixed(6)
   } catch (error) {
     console.error('Failed to calculate ICO price:', error)
     return "0"

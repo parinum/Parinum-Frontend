@@ -74,7 +74,7 @@ export default function CreateStake() {
     try {
       const result = await createNewStake(stakeAmount, Number(stakeTime))
       if (result.success) {
-        setMessage(`Successfully created stake of ${stakeAmount} PSC for ${getStakeDurationLabel(Number(stakeTime))}!`)
+        setMessage(`Successfully created stake of ${stakeAmount} PRM for ${getStakeDurationLabel(Number(stakeTime))}!`)
         setIsSuccess(true)
         // Reset form
         setStakeAmount('')
@@ -126,7 +126,7 @@ export default function CreateStake() {
               Create New Stake
             </h1>
             <p className="text-secondary-600 dark:text-dark-300">
-              Stake your PSC tokens to earn rewards based on staking duration
+              Stake your PRM tokens to earn rewards based on staking duration
             </p>
           </motion.div>
 
@@ -143,7 +143,7 @@ export default function CreateStake() {
                 <div className="p-4 bg-slate-100 dark:bg-dark-700/30 rounded-xl">
                   <div className="flex items-center justify-between">
                     <span className="text-secondary-600 dark:text-dark-300">Available Balance:</span>
-                    <span className="text-xl font-bold text-secondary-900 dark:text-white">{walletBalance} PSC</span>
+                    <span className="text-xl font-bold text-secondary-900 dark:text-white">{walletBalance} PRM</span>
                   </div>
                 </div>
 
@@ -154,7 +154,7 @@ export default function CreateStake() {
                     <div className="group relative ml-2">
                       <InfoIcon />
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-white dark:bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-secondary-600 dark:text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                        Enter the amount of PSC tokens you want to stake. Your tokens will be locked for the selected duration.
+                        Enter the amount of PRM tokens you want to stake. Your tokens will be locked for the selected duration.
                       </div>
                     </div>
                   </label>
@@ -170,7 +170,7 @@ export default function CreateStake() {
                       required
                     />
                     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-secondary-400 dark:text-dark-400">
-                      PSC
+                      PRM
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -264,7 +264,7 @@ export default function CreateStake() {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-secondary-600 dark:text-dark-300">Amount:</span>
-                    <span className="text-secondary-900 dark:text-white font-medium">{stakeAmount || '0'} PSC</span>
+                    <span className="text-secondary-900 dark:text-white font-medium">{stakeAmount || '0'} PRM</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-secondary-600 dark:text-dark-300">Duration:</span>
@@ -279,7 +279,7 @@ export default function CreateStake() {
                   <div className="h-px bg-slate-200 dark:bg-dark-600"></div>
                   <div className="flex justify-between">
                     <span className="text-secondary-600 dark:text-dark-300">Est. Bonus Rewards:</span>
-                    <span className="text-green-600 dark:text-green-400 font-bold">{estimatedRewards} PSC</span>
+                    <span className="text-green-600 dark:text-green-400 font-bold">{estimatedRewards} PRM</span>
                   </div>
                 </div>
               </div>

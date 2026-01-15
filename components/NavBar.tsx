@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import ParinumLogo from '@/icons/parinum.svg'
+import ParinumDarkLogo from '@/icons/parinum dark.svg'
+import EthIcon from 'cryptocurrency-icons/svg/color/eth.svg'
 import { useRouter } from 'next/router'
 import { useTheme } from './ThemeProvider'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -104,9 +106,9 @@ export default function NavBar({ children }: NavBarProps) {
 
   const navigation = [
     { name: 'Home', href: '/' },
-    { name: 'Purchases', href: '/purchases' },
+    { name: 'Purchases', href: '/how-to-purchase' },
+    { name: 'PRM', href: '/prm-funding' },
     { name: 'Staking', href: '/stake-dashboard' },
-  { name: 'PRM', href: '/psc-funding' },
     { name: 'Governance', href: '/governance' },
   ]
 
@@ -124,9 +126,15 @@ export default function NavBar({ children }: NavBarProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-1 group">
-              <Image src={ParinumLogo} alt="Parinum logo" width={36} height={36} priority />
-              <span className="text-xl font-bold text-secondary-900 dark:text-white font-sans">Parinum</span>
+            <Link href="/" className="flex items-center group">
+              <Image 
+                src={resolvedTheme === 'light' ? ParinumDarkLogo : ParinumLogo} 
+                alt="Parinum logo" 
+                width={28} 
+                height={28} 
+                priority 
+              />
+              <span className="ml-2.5 text-xl font-medium tracking-normal text-secondary-900 dark:text-white font-sans">Parinum</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -241,12 +249,27 @@ export default function NavBar({ children }: NavBarProps) {
                                 className="p-2 rounded-lg hover:bg-white/10 transition-all duration-300"
                                 title={chain.name}
                               >
-                                {chain.hasIcon && chain.iconUrl && (
-                                  <img
-                                    alt={chain.name ?? 'Chain icon'}
-                                    src={chain.iconUrl}
-                                    className="w-5 h-5 rounded-full"
-                                  />
+                                {chain.hasIcon && (
+                                  <div className="w-5 h-5 relative flex items-center justify-center">
+                                    {(chain.id === 1 || chain.id === 31337 || chain.name === 'Ethereum' || chain.name === 'Local Ethereum') ? (
+                                      <Image
+                                        src={EthIcon}
+                                        alt={chain.name ?? 'Ethereum'}
+                                        width={20}
+                                        height={20}
+                                        className="rounded-full"
+                                        unoptimized
+                                      />
+                                    ) : (
+                                      chain.iconUrl && (
+                                        <img
+                                          alt={chain.name ?? 'Chain icon'}
+                                          src={chain.iconUrl}
+                                          className="w-5 h-5 rounded-full"
+                                        />
+                                      )
+                                    )}
+                                  </div>
                                 )}
                               </button>
                               <button
@@ -338,12 +361,27 @@ export default function NavBar({ children }: NavBarProps) {
                                 className="p-2 rounded-lg hover:bg-white/10 transition-all duration-300"
                                 title={chain.name}
                               >
-                                {chain.hasIcon && chain.iconUrl && (
-                                  <img
-                                    alt={chain.name ?? 'Chain icon'}
-                                    src={chain.iconUrl}
-                                    className="w-5 h-5 rounded-full"
-                                  />
+                                {chain.hasIcon && (
+                                  <div className="w-5 h-5 relative flex items-center justify-center">
+                                    {(chain.id === 1 || chain.id === 31337 || chain.name === 'Ethereum' || chain.name === 'Local Ethereum') ? (
+                                      <Image
+                                        src={EthIcon}
+                                        alt={chain.name ?? 'Ethereum'}
+                                        width={20}
+                                        height={20}
+                                        className="rounded-full"
+                                        unoptimized
+                                      />
+                                    ) : (
+                                      chain.iconUrl && (
+                                        <img
+                                          alt={chain.name ?? 'Chain icon'}
+                                          src={chain.iconUrl}
+                                          className="w-5 h-5 rounded-full"
+                                        />
+                                      )
+                                    )}
+                                  </div>
                                 )}
                               </button>
                               <button
