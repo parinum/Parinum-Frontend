@@ -100,6 +100,20 @@ const tokenOptionsByChain: Record<number, Token[]> = {
 const getTokensForChain = (chainId: number) =>
   tokenOptionsByChain[chainId] || tokenOptionsByChain[1]
 
+const COINGECKO_IDS: Record<string, string> = {
+  'ETH': 'ethereum',
+  'WETH': 'weth',
+  'BTC': 'bitcoin',
+  'WBTC': 'wrapped-bitcoin',
+  'USDC': 'usd-coin',
+  'USDC.e': 'usd-coin',
+  'USDT': 'tether',
+  'DAI': 'dai',
+  'BNB': 'binancecoin',
+  'MATIC': 'matic-network',
+  'AVAX': 'avalanche-2',
+}
+
 export default function CreatePurchase() {
   const chainId = useChainId()
   const [seller, setSeller] = useState('')
@@ -119,6 +133,112 @@ export default function CreatePurchase() {
   const [networkName, setNetworkName] = useState(
     getParinumNetworkConfig(chainId)?.name || 'Ethereum'
   )
+  const [priceUsd, setPriceUsd] = useState('')
+  const [collateralUsd, setCollateralUsd] = useState('')
+  const [tokenPrice, setTokenPrice] = useState<number | null>(null)
+  
+  const [priceInputMode, setPriceInputMode] = useState<'TOKEN' | 'USD'>('TOKEN')
+  const [collateralInputMode, setCollateralInputMode] = useState<'TOKEN' | 'USD'>('TOKEN')
+
+  useEffect(() => {
+    const fetchPrice = async () => {
+      const geckoId = COINGECKO_IDS[selectedToken] || COINGECKO_IDS[selectedToken.replace('.e', '')]
+      if (geckoId) {
+        try {
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${geckoId}&vs_currencies=usd`)
+          const data = await res.json()
+          if (data[geckoId]?.usd) {
+            setTokenPrice(data[geckoId].usd)
+          }
+        } catch (error) {
+          console.error('Error fetching price:', error)
+          setTokenPrice(null)
+        }
+      } else {
+        setTokenPrice(null)
+      }
+    }
+    fetchPrice()
+  }, [selectedToken])
+
+  useEffect(() => {
+    if (tokenPrice) {
+      if (price) {
+        const val = parseFloat(price)
+        if (!isNaN(val)) setPriceUsd((val * tokenPrice).toFixed(2))
+      }
+      if (collateral) {
+        const val = parseFloat(collateral)
+        if (!isNaN(val)) setCollateralUsd((val * tokenPrice).toFixed(2))
+      }
+    }
+  }, [tokenPrice])
+
+  const handlePriceChange = (val: string) => {
+    if (priceInputMode === 'TOKEN') {
+      setPrice(val)
+      if (val === '') {
+        setPriceUsd('')
+        return
+      }
+      if (tokenPrice) {
+        const p = parseFloat(val)
+        if (!isNaN(p)) {
+          setPriceUsd((p * tokenPrice).toFixed(2))
+        }
+      }
+    } else {
+      setPriceUsd(val)
+      if (val === '') {
+        setPrice('')
+        return
+      }
+      if (tokenPrice && tokenPrice > 0) {
+        const p = parseFloat(val)
+        if (!isNaN(p)) {
+          const tokenAmount = p / tokenPrice
+          setPrice(tokenAmount > 1 ? tokenAmount.toFixed(4) : tokenAmount.toFixed(8))
+        }
+      }
+    }
+  }
+
+  const handleCollateralChange = (val: string) => {
+    if (collateralInputMode === 'TOKEN') {
+      setCollateral(val)
+      if (val === '') {
+        setCollateralUsd('')
+        return
+      }
+      if (tokenPrice) {
+        const p = parseFloat(val)
+        if (!isNaN(p)) {
+          setCollateralUsd((p * tokenPrice).toFixed(2))
+        }
+      }
+    } else {
+      setCollateralUsd(val)
+      if (val === '') {
+        setCollateral('')
+        return
+      }
+      if (tokenPrice && tokenPrice > 0) {
+        const p = parseFloat(val)
+        if (!isNaN(p)) {
+          const tokenAmount = p / tokenPrice
+          setCollateral(tokenAmount > 1 ? tokenAmount.toFixed(4) : tokenAmount.toFixed(8))
+        }
+      }
+    }
+  }
+
+  const togglePriceMode = () => {
+    setPriceInputMode(prev => prev === 'TOKEN' ? 'USD' : 'TOKEN')
+  }
+
+  const toggleCollateralMode = () => {
+    setCollateralInputMode(prev => prev === 'TOKEN' ? 'USD' : 'TOKEN')
+  }
 
   const dropdownRef = useRef<HTMLDivElement>(null)
   
@@ -312,16 +432,38 @@ export default function CreatePurchase() {
                       </div>
                     </div>
                   </label>
-                  <input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="0.00"
-                    step="0.001"
-                    min="0"
-                    className="w-full px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={priceInputMode === 'TOKEN' ? price : priceUsd}
+                      onChange={(e) => handlePriceChange(e.target.value)}
+                      placeholder="0.00"
+                      step="any"
+                      min="0"
+                      className="w-full pl-4 pr-24 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200"
+                      required
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                       {priceInputMode === 'TOKEN' && tokenPrice && (
+                          <span className="text-xs text-secondary-500 dark:text-dark-300">
+                             ≈ ${priceUsd || '0.00'}
+                          </span>
+                       )}
+                       {priceInputMode === 'USD' && tokenPrice && (
+                          <span className="text-xs text-secondary-500 dark:text-dark-300">
+                             ≈ {price || '0.00'} {selectedToken}
+                          </span>
+                       )}
+                      <button
+                        type="button"
+                        onClick={togglePriceMode}
+                        className="px-2 py-1 bg-white dark:bg-dark-800 rounded-lg border border-primary-500/20 text-xs font-medium text-secondary-900 dark:text-white hover:bg-slate-50 dark:hover:bg-dark-700 transition-colors"
+                      >
+                         {priceInputMode === 'TOKEN' ? selectedToken : 'USD'} 
+                         <span className="ml-1 opacity-50">⇅</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -334,16 +476,38 @@ export default function CreatePurchase() {
                       </div>
                     </div>
                   </label>
-                  <input
-                    type="number"
-                    value={collateral}
-                    onChange={(e) => setCollateral(e.target.value)}
-                    placeholder="0.00"
-                    step="0.001"
-                    min="0"
-                    className="w-full px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={collateralInputMode === 'TOKEN' ? collateral : collateralUsd}
+                      onChange={(e) => handleCollateralChange(e.target.value)}
+                      placeholder="0.00"
+                      step="any"
+                      min="0"
+                      className="w-full pl-4 pr-24 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200"
+                      required
+                    />
+                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                       {collateralInputMode === 'TOKEN' && tokenPrice && (
+                          <span className="text-xs text-secondary-500 dark:text-dark-300">
+                             ≈ ${collateralUsd || '0.00'}
+                          </span>
+                       )}
+                       {collateralInputMode === 'USD' && tokenPrice && (
+                          <span className="text-xs text-secondary-500 dark:text-dark-300">
+                             ≈ {collateral || '0.00'} {selectedToken}
+                          </span>
+                       )}
+                      <button
+                        type="button"
+                        onClick={toggleCollateralMode}
+                        className="px-2 py-1 bg-white dark:bg-dark-800 rounded-lg border border-primary-500/20 text-xs font-medium text-secondary-900 dark:text-white hover:bg-slate-50 dark:hover:bg-dark-700 transition-colors"
+                      >
+                         {collateralInputMode === 'TOKEN' ? selectedToken : 'USD'} 
+                         <span className="ml-1 opacity-50">⇅</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
