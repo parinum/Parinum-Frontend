@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
+import Image from 'next/image'
+import ParinumLogo from '@/icons/parinum.svg'
+import ParinumDarkLogo from '@/icons/parinum dark.svg'
+import { useTheme } from '@/components/ThemeProvider'
 import Layout from '@/components/Layout'
 import { 
   buyPRMTokens, 
@@ -50,6 +54,7 @@ const InfoIcon = ({ className }: { className?: string }) => (
 
 export default function PRMFunding() {
   const router = useRouter()
+  const { resolvedTheme } = useTheme()
   
   // Form states
   const [ethAmount, setEthAmount] = useState('')
@@ -380,8 +385,13 @@ export default function PRMFunding() {
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">Token Pool</h3>
-                <div className="text-purple-500 bg-purple-100/50 dark:bg-purple-900/30 p-2 rounded-lg">
-                  <GiftIcon />
+                <div className="text-purple-500 bg-purple-100/50 dark:bg-purple-900/30 w-10 h-10 flex items-center justify-center rounded-lg">
+                  <Image 
+                    src={resolvedTheme === 'light' ? ParinumDarkLogo : ParinumLogo} 
+                    alt="Parinum logo" 
+                    width={24} 
+                    height={24} 
+                  />
                 </div>
               </div>
               <p className="text-2xl font-bold text-secondary-900 dark:text-white mt-2">
