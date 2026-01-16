@@ -7,7 +7,7 @@ import { useTheme } from './ThemeProvider'
 
 const XIcon = () => (
   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zl-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 )
 
@@ -79,6 +79,12 @@ export default function Footer() {
             <div className="text-secondary-500 dark:text-dark-400 text-sm mb-4 md:mb-0">
               © 2025 Parinum. All rights reserved.
             </div>
+            <Link 
+              href="/privacy-policy" 
+              className="text-sm text-secondary-500 dark:text-dark-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+            >
+              Privacy Policy
+            </Link>
           </div>
         </div>
       </div>
