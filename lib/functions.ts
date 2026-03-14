@@ -87,6 +87,11 @@ export interface AccountIcoInfo {
   prmWithdrawn: string
 }
 
+type ReadOptions = {
+  forceRefresh?: boolean
+  targetChainId?: number
+}
+
 // Governance-related interfaces
 export interface ProposalInfo {
   id: string
@@ -170,6 +175,177 @@ const getRpcUrlForChain = (chainId?: number | null) => {
   const chain = config.chains.find((c) => c.id === (chainId || 0))
   const urls = chain?.rpcUrls?.default?.http || []
   return urls[0]
+}
+
+const getRpcUrlsForChain = (chainId?: number | null) => {
+  const effectiveChainId = chainId || 1
+  const chain = config.chains.find((c) => c.id === effectiveChainId)
+  const urls: string[] = []
+
+  const envCandidates = [
+    process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL,
+    process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
+    process.env.NEXT_PUBLIC_RPC_URL,
+  ]
+
+  for (const candidate of envCandidates) {
+    if (candidate?.trim()) {
+      urls.push(candidate.trim())
+    }
+  }
+
+  if (effectiveChainId === 1) {
+    urls.push(
+      'https://ethereum.publicnode.com',
+      'https://eth.drpc.org',
+      'https://mainnet.gateway.tenderly.co'
+    )
+  } else {
+    for (const url of chain?.rpcUrls?.default?.http || []) {
+      urls.push(url)
+    }
+  }
+
+  return [...new Set(urls.filter(Boolean))]
+}
+
+const RPC_TIMEOUT_MS = 2_500
+const preferredRpcUrlByChain = new Map<number, string>()
+
+const rpcRequest = async <T>(
+  url: string,
+  method: string,
+  params: unknown[]
+): Promise<T> => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: `${method}-${Date.now()}`,
+        method,
+        params,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      throw new Error(`RPC request failed with status ${response.status}`)
+    }
+
+    const payload = (await response.json()) as {
+      result?: T
+      error?: { message?: string }
+    }
+
+    if (payload.error) {
+      throw new Error(payload.error.message || 'RPC request failed')
+    }
+
+    if (typeof payload.result === 'undefined') {
+      throw new Error('RPC response missing result')
+    }
+
+    return payload.result
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+const rpcRequestWithFallback = async <T>(
+  chainId: number,
+  method: string,
+  params: unknown[]
+): Promise<T> => {
+  const rpcUrls = getRpcUrlsForChain(chainId)
+  const preferredUrl = preferredRpcUrlByChain.get(chainId)
+  let lastError: unknown = null
+
+  if (preferredUrl) {
+    try {
+      return await rpcRequest<T>(preferredUrl, method, params)
+    } catch (error) {
+      lastError = error
+      preferredRpcUrlByChain.delete(chainId)
+    }
+  }
+
+  const candidateUrls = rpcUrls.filter((url) => url !== preferredUrl)
+  if (!candidateUrls.length) {
+    throw new Error(formatEthersError(lastError) || `Unable to reach RPC for chain ${chainId}`)
+  }
+
+  try {
+    const winner = await new Promise<{ url: string; result: T }>((resolve, reject) => {
+      let pending = candidateUrls.length
+      let finalError: unknown = null
+
+      for (const url of candidateUrls) {
+        rpcRequest<T>(url, method, params)
+          .then((result) => resolve({ url, result }))
+          .catch((error) => {
+            finalError = error
+            pending -= 1
+            if (pending === 0) {
+              reject(finalError)
+            }
+          })
+      }
+    })
+    preferredRpcUrlByChain.set(chainId, winner.url)
+    return winner.result
+  } catch (error) {
+    lastError = error
+  }
+
+  throw new Error(formatEthersError(lastError) || `Unable to reach RPC for chain ${chainId}`)
+}
+
+const parseHexBigInt = (value: string) => BigInt(value)
+
+const readContractValue = async (
+  chainId: number,
+  to: string,
+  data: string
+) => rpcRequestWithFallback<string>(chainId, 'eth_call', [{ to, data }, 'latest'])
+
+const getReadOnlyProvider = (chainId?: number | null) => {
+  const effectiveChainId = chainId || 1
+  const chain = config.chains.find((c) => c.id === effectiveChainId)
+
+  if (!chain) {
+    throw new Error(`Unsupported read chain ${effectiveChainId}`)
+  }
+
+  const rpcUrls = getRpcUrlsForChain(effectiveChainId)
+  if (!rpcUrls.length) {
+    throw new Error(`Missing RPC URL for chain ${effectiveChainId}`)
+  }
+
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: (chain.contracts as any)?.ensRegistry?.address,
+  }
+
+  if (rpcUrls.length === 1) {
+    return new ethers.JsonRpcProvider(rpcUrls[0], network)
+  }
+
+  return new ethers.FallbackProvider(
+    rpcUrls.map((url, index) => ({
+      provider: new ethers.JsonRpcProvider(url, network),
+      priority: index + 1,
+      weight: 1,
+      stallTimeout: 1_500,
+    }))
+  )
 }
 
 // Contract ABIs (simplified - you should import the full ABIs)
@@ -1085,31 +1261,39 @@ export const claimPRMTokens = async (): Promise<TransactionResult> => {
 }
 
 // Get ICO information
-export const getIcoInfo = async (): Promise<IcoInfo> => {
+export const getIcoInfo = async (options: ReadOptions = {}): Promise<IcoInfo> => {
   try {
-    const { provider, chainId } = await resolveChainContext()
+    const chainId = options.targetChainId || 1
     const cacheKey = `ico-info-${chainId}`
-    const cached = readCache.get<IcoInfo>(cacheKey)
-    if (cached) return cached
+    if (!options.forceRefresh) {
+      const cached = readCache.get<IcoInfo>(cacheKey)
+      if (cached) return cached
+    }
     const { ico } = getCoreAddresses(chainId)
     if (!ico) {
       throw new Error('PRM ICO contract address not configured')
     }
 
-    const code = await provider.getCode(ico)
+    const code = await rpcRequestWithFallback<string>(chainId, 'eth_getCode', [ico, 'latest'])
     if (code === '0x') {
       throw new Error(`Contract not deployed at ${ico} on chain ${chainId}`)
     }
 
-    const icoContract = PRMICO__factory.connect(ico, provider)
+    const icoInterface = PRMICO__factory.createInterface()
 
-    const [poolPRM, poolETH, deploymentTime, timeLimit, weightedETHRaised] = await Promise.all([
-      icoContract.poolPRM(),
-      icoContract.poolETH(),
-      icoContract.deploymentTime(),
-      icoContract.timeLimit(),
-      icoContract.weightedETHRaised()
+    const [poolPRMRaw, poolETHRaw, deploymentTimeRaw, timeLimitRaw, weightedETHRaisedRaw] = await Promise.all([
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('poolPRM')),
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('poolETH')),
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('deploymentTime')),
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('timeLimit')),
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('weightedETHRaised')),
     ])
+
+    const poolPRM = parseHexBigInt(poolPRMRaw)
+    const poolETH = parseHexBigInt(poolETHRaw)
+    const deploymentTime = parseHexBigInt(deploymentTimeRaw)
+    const timeLimit = parseHexBigInt(timeLimitRaw)
+    const weightedETHRaised = parseHexBigInt(weightedETHRaisedRaw)
 
     const res: IcoInfo = {
       poolPRM: ethers.formatEther(poolPRM),
@@ -1123,36 +1307,44 @@ export const getIcoInfo = async (): Promise<IcoInfo> => {
     return res
   } catch (error) {
     console.error('Failed to get ICO info:', error)
-    return {
-      poolPRM: '0',
-      poolETH: '0',
-      deploymentTime: '0',
-      timeLimit: '0',
-      weightedETHRaised: '0',
-      soldAmount: '0'
-    }
+    throw new Error(formatEthersError(error))
   }
 }
 
 // Get account ICO information
-export const getAccountIcoInfo = async (account: string): Promise<AccountIcoInfo> => {
+export const getAccountIcoInfo = async (
+  account: string,
+  options: ReadOptions = {}
+): Promise<AccountIcoInfo> => {
   try {
-    const { provider, chainId } = await resolveChainContext()
+    const chainId = options.targetChainId || 1
     const key = `account-ico-${chainId}-${account?.toLowerCase?.() || ''}`
-    const cached = readCache.get<AccountIcoInfo>(key)
-    if (cached) return cached
+    if (!options.forceRefresh) {
+      const cached = readCache.get<AccountIcoInfo>(key)
+      if (cached) return cached
+    }
     const { ico } = getCoreAddresses(chainId)
     if (!ico) {
       throw new Error('PRM ICO contract address not configured')
     }
 
-    const code = await provider.getCode(ico)
+    const code = await rpcRequestWithFallback<string>(chainId, 'eth_getCode', [ico, 'latest'])
     if (code === '0x') {
       throw new Error(`Contract not deployed at ${ico} on chain ${chainId}`)
     }
 
-    const icoContract = PRMICO__factory.connect(ico, provider)
-    const contributor = await icoContract.contributors(account)
+    const icoInterface = PRMICO__factory.createInterface()
+    const contributorRaw = await readContractValue(
+      chainId,
+      ico,
+      icoInterface.encodeFunctionData('contributors', [account])
+    )
+    const contributor = icoInterface.decodeFunctionResult('contributors', contributorRaw)[0] as {
+      contribution: bigint
+      weightedContribution: bigint
+      ethReceived: bigint
+      prmWithdrawn: bigint
+    }
 
     const res: AccountIcoInfo = {
       contribution: ethers.formatEther(contributor.contribution),
@@ -1164,19 +1356,17 @@ export const getAccountIcoInfo = async (account: string): Promise<AccountIcoInfo
     return res
   } catch (error) {
     console.error('Failed to get account ICO info:', error)
-    return {
-      contribution: '0',
-      weightedContribution: '0',
-      ethReceived: '0',
-      prmWithdrawn: '0'
-    }
+    throw new Error(formatEthersError(error))
   }
 }
 
 // Calculate ICO price based on current pool state
-export const calculateIcoPrice = async (ethAmount: string): Promise<string> => {
+export const calculateIcoPrice = async (
+  ethAmount: string,
+  options: ReadOptions = {}
+): Promise<string> => {
   try {
-    const icoInfo = await getIcoInfo()
+    const icoInfo = await getIcoInfo(options)
     const poolETH = parseFloat(icoInfo.poolETH)
     const poolPRM = parseFloat(icoInfo.poolPRM)
     const ethAmountNum = parseFloat(ethAmount)

@@ -17,8 +17,17 @@ import {
   bsc,
   polygon,
 } from 'wagmi/chains'
+import { fallback } from 'viem'
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID'
+
+const mainnetTransports = [
+  process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL,
+  process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
+  'https://ethereum.publicnode.com',
+  'https://eth.drpc.org',
+  'https://mainnet.gateway.tenderly.co',
+].filter((value): value is string => Boolean(value && value.trim()))
 
 const connectors = connectorsForWallets(
   [
@@ -57,7 +66,7 @@ export const config = createConfig({
     polygon,
   ],
   transports: {
-    [mainnet.id]: http(),
+    [mainnet.id]: fallback(mainnetTransports.map((url) => http(url))),
     [bsc.id]: http(),
     [polygon.id]: http(),
   },

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { useRouter } from 'next/router'
 import Link from 'next/link'
 import Image from 'next/image'
 import ParinumLogo from '@/icons/parinum.svg'
@@ -8,12 +7,13 @@ import ParinumDarkLogo from '@/icons/parinum dark.svg'
 import { useTheme } from '@/components/ThemeProvider'
 import Layout from '@/components/Layout'
 import { 
+  type AccountIcoInfo,
   buyPRMTokens, 
   claimPRMTokens, 
   getIcoInfo, 
   getAccountIcoInfo, 
   calculateIcoPrice,
-  initProvider 
+  type IcoInfo,
 } from '@/lib/functions'
 import { ethers } from 'ethers'
 import { useAccount, useChainId, useSwitchChain } from 'wagmi'
@@ -52,9 +52,36 @@ const InfoIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+const EMPTY_ICO_INFO: IcoInfo = {
+  poolPRM: '0',
+  poolETH: '0',
+  deploymentTime: '0',
+  timeLimit: '0',
+  weightedETHRaised: '0',
+  soldAmount: '0'
+}
+
+const EMPTY_ACCOUNT_INFO: AccountIcoInfo = {
+  contribution: '0',
+  weightedContribution: '0',
+  ethReceived: '0',
+  prmWithdrawn: '0'
+}
+
+const FUNDING_CHAIN_ID = 1
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Unknown error'
+
+const LoadingBar = ({ className }: { className: string }) => (
+  <div className={`animate-pulse rounded-lg bg-slate-200/80 dark:bg-dark-700/70 ${className}`} />
+)
+
 export default function PRMFunding() {
-  const router = useRouter()
   const { resolvedTheme } = useTheme()
+  const fundingNetwork = getParinumNetworkConfig(FUNDING_CHAIN_ID)
   
   // Form states
   const [ethAmount, setEthAmount] = useState('')
@@ -64,24 +91,16 @@ export default function PRMFunding() {
   const [message, setMessage] = useState('')
   
   // ICO data states
-  const [icoInfo, setIcoInfo] = useState({
-    poolPRM: '0',
-    poolETH: '0',
-    deploymentTime: '0',
-    timeLimit: '0',
-    weightedETHRaised: '0',
-    soldAmount: '0'
-  })
+  const [icoInfo, setIcoInfo] = useState<IcoInfo>(EMPTY_ICO_INFO)
+  const [isIcoLoading, setIsIcoLoading] = useState(true)
+  const [icoError, setIcoError] = useState('')
   
   const { address } = useAccount()
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
-  const [accountInfo, setAccountInfo] = useState({
-    contribution: '0',
-    weightedContribution: '0',
-    ethReceived: '0',
-    prmWithdrawn: '0'
-  })
+  const [accountInfo, setAccountInfo] = useState<AccountIcoInfo>(EMPTY_ACCOUNT_INFO)
+  const [isAccountLoading, setIsAccountLoading] = useState(false)
+  const [accountError, setAccountError] = useState('')
   
   const [icoEnded, setIcoEnded] = useState(false)
   const [ethPrice, setEthPrice] = useState(0)
@@ -91,10 +110,9 @@ export default function PRMFunding() {
   // Fetch ETH/Native Token Price
   useEffect(() => {
     const fetchPrice = async () => {
-      const config = getParinumNetworkConfig(chainId)
       let coinId = 'ethereum'
-      if (config?.nativeSymbol === 'BNB') coinId = 'binancecoin'
-      if (config?.nativeSymbol === 'MATIC') coinId = 'matic-network'
+      if (fundingNetwork?.nativeSymbol === 'BNB') coinId = 'binancecoin'
+      if (fundingNetwork?.nativeSymbol === 'MATIC') coinId = 'matic-network'
 
       try {
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`)
@@ -109,7 +127,7 @@ export default function PRMFunding() {
     fetchPrice()
     const interval = setInterval(fetchPrice, 60000)
     return () => clearInterval(interval)
-  }, [chainId])
+  }, [fundingNetwork?.nativeSymbol])
 
   const toggleUsdMode = () => {
     const newMode = !isUsdMode
@@ -138,37 +156,113 @@ export default function PRMFunding() {
     }
   }
 
-  const fetchIcoInfo = async () => {
-    try {
-      const info = await getIcoInfo()
-      setIcoInfo(info)
-      
-      // Check if ICO has ended
-      const currentTime = Math.floor(Date.now() / 1000)
-      const endTime = parseInt(info.deploymentTime) + parseInt(info.timeLimit)
-      setIcoEnded(currentTime > endTime)
-    } catch (error) {
-      console.error('Error fetching ICO info:', error)
-    }
-  }
+  const loadIcoInfo = useCallback(
+    async ({ forceRefresh = false, showLoading = true } = {}) => {
+      if (showLoading) {
+        setIsIcoLoading(true)
+      }
+      setIcoError('')
+
+      try {
+        let info: IcoInfo | null = null
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            info = await getIcoInfo({
+              forceRefresh: forceRefresh || attempt > 0,
+              targetChainId: FUNDING_CHAIN_ID,
+            })
+            break
+          } catch (error) {
+            if (attempt === 2) {
+              throw error
+            }
+            await wait(800 * (attempt + 1))
+          }
+        }
+
+        if (!info) {
+          throw new Error('Unable to load ICO data')
+        }
+
+        setIcoInfo(info)
+
+        const currentTime = Math.floor(Date.now() / 1000)
+        const endTime = parseInt(info.deploymentTime) + parseInt(info.timeLimit)
+        setIcoEnded(currentTime > endTime)
+
+        return info
+      } catch (error) {
+        const errorMessage = getErrorMessage(error)
+        console.error('Error fetching ICO info:', error)
+        setIcoInfo(EMPTY_ICO_INFO)
+        setIcoEnded(false)
+        setIcoError(errorMessage)
+        return null
+      } finally {
+        setIsIcoLoading(false)
+      }
+    },
+    []
+  )
 
   // Fetch account information
-  const fetchAccountInfo = useCallback(async () => {
-    try {
-      if (address) {
-        const info = await getAccountIcoInfo(address)
-        setAccountInfo(info)
+  const loadAccountInfo = useCallback(
+    async ({ forceRefresh = false, showLoading = true } = {}) => {
+      if (!address) {
+        setAccountInfo(EMPTY_ACCOUNT_INFO)
+        setAccountError('')
+        setIsAccountLoading(false)
+        return null
       }
-    } catch (error) {
-      console.error('Error fetching account info:', error)
-    }
-  }, [address])
+
+      if (showLoading) {
+        setIsAccountLoading(true)
+      }
+      setAccountError('')
+
+      try {
+        let info: AccountIcoInfo | null = null
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            info = await getAccountIcoInfo(address, {
+              forceRefresh: forceRefresh || attempt > 0,
+              targetChainId: FUNDING_CHAIN_ID,
+            })
+            break
+          } catch (error) {
+            if (attempt === 2) {
+              throw error
+            }
+            await wait(800 * (attempt + 1))
+          }
+        }
+
+        if (!info) {
+          throw new Error('Unable to load account data')
+        }
+
+        setAccountInfo(info)
+        return info
+      } catch (error) {
+        const errorMessage = getErrorMessage(error)
+        console.error('Error fetching account info:', error)
+        setAccountInfo(EMPTY_ACCOUNT_INFO)
+        setAccountError(errorMessage)
+        return null
+      } finally {
+        setIsAccountLoading(false)
+      }
+    },
+    [address]
+  )
 
   // Calculate estimated PRM tokens (UI label only; backend still returns PRM value)
   useEffect(() => {
     const calculateTokens = async () => {
       if (ethAmount && parseFloat(ethAmount) > 0) {
-        const prmAmount = await calculateIcoPrice(ethAmount)
+        const prmAmount = await calculateIcoPrice(ethAmount, { targetChainId: FUNDING_CHAIN_ID })
         // Apply multiplier to estimation
         const multiplied = parseFloat(prmAmount) * multiplier
         setEstimatedPRM(multiplied.toString())
@@ -181,12 +275,12 @@ export default function PRMFunding() {
 
   // Initial data fetch
   useEffect(() => {
-    fetchIcoInfo()
-  }, [chainId])
+    void loadIcoInfo({ forceRefresh: true })
+  }, [loadIcoInfo])
 
   useEffect(() => {
-    fetchAccountInfo()
-  }, [fetchAccountInfo, chainId])
+    void loadAccountInfo({ forceRefresh: true })
+  }, [address, loadAccountInfo])
 
   // Handle buy PRM tokens
   const handleBuyTokens = async (e: React.FormEvent) => {
@@ -205,9 +299,11 @@ export default function PRMFunding() {
       if (result.success) {
         setMessage(`Successfully purchased PRM tokens! Transaction: ${result.txHash}`)
         setEthAmount('')
-        // Refresh data
-        fetchIcoInfo()
-        fetchAccountInfo()
+        setUsdAmountDisplay('')
+        await Promise.all([
+          loadIcoInfo({ forceRefresh: true, showLoading: false }),
+          loadAccountInfo({ forceRefresh: true, showLoading: false })
+        ])
       } else {
         setMessage(`Error: ${result.error}`)
       }
@@ -228,7 +324,10 @@ export default function PRMFunding() {
       
       if (result.success) {
         setMessage(`Successfully claimed PRM tokens! Transaction: ${result.txHash}`)
-        fetchAccountInfo()
+        await Promise.all([
+          loadIcoInfo({ forceRefresh: true, showLoading: false }),
+          loadAccountInfo({ forceRefresh: true, showLoading: false })
+        ])
       } else {
         setMessage(`Error: ${result.error}`)
       }
@@ -324,6 +423,28 @@ export default function PRMFunding() {
                 </motion.button>
               </Link>
             </div>
+
+            {isIcoLoading && (
+              <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-slate-300/60 bg-white/80 px-4 py-2 text-sm text-secondary-700 shadow-sm backdrop-blur-sm dark:border-slate-600/60 dark:bg-dark-800/80 dark:text-dark-200">
+                <div className="h-4 w-4 rounded-full border-2 border-slate-400/40 border-t-slate-700 dark:border-white/30 dark:border-t-white animate-spin" />
+                <span>Loading live funding data...</span>
+              </div>
+            )}
+
+            {!isIcoLoading && icoError && (
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <p className="text-sm text-rose-600 dark:text-rose-300">
+                  Unable to load live ICO data right now. {icoError}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void loadIcoInfo({ forceRefresh: true })}
+                  className="rounded-full border border-slate-300/70 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:border-slate-400 hover:text-secondary-900 dark:border-slate-600 dark:text-dark-200 dark:hover:border-slate-500 dark:hover:text-white"
+                >
+                  Retry loading data
+                </button>
+              </div>
+            )}
           </motion.div>
 
           {/* ICO Stats */}
@@ -343,13 +464,27 @@ export default function PRMFunding() {
                   <TrendingUpIcon />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-secondary-900 dark:text-white mt-2">
-                {parseFloat(icoInfo.poolETH).toFixed(2)} <span className="text-lg text-secondary-500 font-normal">ETH</span>
-              </p>
-              {ethPrice > 0 && (
-                <p className="text-xl font-bold text-secondary-900 dark:text-white mt-1">
-                  { (parseFloat(icoInfo.poolETH) * ethPrice).toLocaleString(undefined, { maximumFractionDigits: 2 }) } <span className="text-base text-secondary-500 font-normal">USD</span>
-                </p>
+              {isIcoLoading ? (
+                <div className="mt-2 space-y-2">
+                  <LoadingBar className="h-8 w-32" />
+                  <LoadingBar className="h-6 w-24" />
+                </div>
+              ) : icoError ? (
+                <div className="mt-2">
+                  <p className="text-2xl font-bold text-secondary-900 dark:text-white">Unavailable</p>
+                  <p className="text-sm text-rose-600 dark:text-rose-300 mt-1">Retry to load live totals</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-secondary-900 dark:text-white mt-2">
+                    {parseFloat(icoInfo.poolETH).toFixed(2)} <span className="text-lg text-secondary-500 font-normal">ETH</span>
+                  </p>
+                  {ethPrice > 0 && !icoError && (
+                    <p className="text-xl font-bold text-secondary-900 dark:text-white mt-1">
+                      {(parseFloat(icoInfo.poolETH) * ethPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-base text-secondary-500 font-normal">USD</span>
+                    </p>
+                  )}
+                </>
               )}
               <p className="text-sm text-secondary-600 dark:text-dark-300 mt-2">Total contribution</p>
             </motion.div>
@@ -364,18 +499,28 @@ export default function PRMFunding() {
                   <ClockIcon />
                 </div>
               </div>
-              <div className="flex items-baseline space-x-1 mt-2">
-                {typeof timeLeft === 'string' ? (
-                  <p className="text-2xl font-bold text-secondary-900 dark:text-white">ICO Ended</p>
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold text-secondary-900 dark:text-white">{timeLeft.days}d</p>
+              {isIcoLoading ? (
+                <div className="mt-2 space-y-2">
+                  <LoadingBar className="h-8 w-28" />
+                  <LoadingBar className="h-5 w-36" />
+                </div>
+              ) : icoError ? (
+                <div className="mt-2">
+                  <p className="text-2xl font-bold text-secondary-900 dark:text-white">Unavailable</p>
+                  <p className="text-sm text-rose-600 dark:text-rose-300 mt-1">Waiting for contract data</p>
+                </div>
+              ) : (
+                <div className="flex items-baseline space-x-1 mt-2">
+                  <p className="text-2xl font-bold text-secondary-900 dark:text-white">
+                    {timeLeft.text === 'ICO Ended' ? 'ICO Ended' : `${timeLeft.days}d`}
+                  </p>
+                  {timeLeft.text !== 'ICO Ended' && (
                     <p className="text-xl text-secondary-500 dark:text-dark-300">{timeLeft.hours}h</p>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
               <p className="text-sm text-secondary-600 dark:text-dark-300 mt-2">
-                {icoEnded ? 'Claiming period active' : 'Funding period active'}
+                {icoError ? 'Waiting for contract data' : icoEnded ? 'Claiming period active' : 'Funding period active'}
               </p>
             </motion.div>
 
@@ -411,15 +556,21 @@ export default function PRMFunding() {
               className="p-8 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-2xl"
             >
               <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-6">
-                {icoEnded ? 'ICO Ended - Claim Your Tokens' : 'Buy PRM Tokens'}
+                {isIcoLoading ? 'Loading ICO Data' : icoEnded ? 'ICO Ended - Claim Your Tokens' : 'Buy PRM Tokens'}
               </h2>
 
-              {!icoEnded ? (
+              {icoError && (
+                <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+                  Live ICO data could not be loaded. Please retry in a moment.
+                </div>
+              )}
+
+              {!isIcoLoading && !icoEnded ? (
                 <form onSubmit={handleBuyTokens} className="space-y-6">
                   <div>
                     <div className="flex justify-between mb-2">
                        <label className="block text-sm font-medium text-secondary-600 dark:text-dark-300">
-                         {getParinumNetworkConfig(chainId)?.nativeSymbol || 'ETH'} Amount {isUsdMode && '(USD)'}
+                         {fundingNetwork?.nativeSymbol || 'ETH'} Amount {isUsdMode && '(USD)'}
                        </label>
                        {ethPrice > 0 && (
                           <button
@@ -427,7 +578,7 @@ export default function PRMFunding() {
                             onClick={toggleUsdMode}
                             className="text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium transition-colors"
                           >
-                            {isUsdMode ? `Enter in ${getParinumNetworkConfig(chainId)?.nativeSymbol || 'ETH'}` : 'Enter in USD'}
+                            {isUsdMode ? `Enter in ${fundingNetwork?.nativeSymbol || 'ETH'}` : 'Enter in USD'}
                           </button>
                        )}
                     </div>
@@ -445,7 +596,7 @@ export default function PRMFunding() {
                       {ethPrice > 0 && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-secondary-400 pointer-events-none">
                           ≈ {isUsdMode 
-                              ? `${parseFloat(ethAmount || '0').toFixed(6)} ${getParinumNetworkConfig(chainId)?.nativeSymbol || 'ETH'}`
+                              ? `${parseFloat(ethAmount || '0').toFixed(6)} ${fundingNetwork?.nativeSymbol || 'ETH'}`
                               : `$${(parseFloat(ethAmount || '0') * ethPrice).toFixed(2)}`
                             }
                         </div>
@@ -496,7 +647,7 @@ export default function PRMFunding() {
 
                   <button
                     type="submit"
-                    disabled={isLoading || !ethAmount}
+                    disabled={isLoading || !ethAmount || !!icoError}
                     className="w-full px-6 py-4 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
                     {isLoading ? (
@@ -509,22 +660,36 @@ export default function PRMFunding() {
                     )}
                   </button>
                 </form>
+              ) : isIcoLoading ? (
+                <div className="space-y-6">
+                  <LoadingBar className="h-14 w-full" />
+                  <LoadingBar className="h-20 w-full" />
+                  <LoadingBar className="h-12 w-full" />
+                </div>
               ) : (
                 <div className="space-y-6">
                   <div className="p-4 bg-slate-800/20 border border-slate-500/20 rounded-xl">
                     <p className="text-dark-300 mb-4">
                       The ICO funding period has ended. You can now claim your PRM tokens based on your contribution.
                     </p>
-                    <div className="text-sm space-y-1">
-                      <p>Your contribution: <span className="text-white font-semibold">{parseFloat(accountInfo.contribution).toFixed(4)} ETH</span></p>
-                      <p>Weighted contribution: <span className="text-white font-semibold">{parseFloat(accountInfo.weightedContribution).toFixed(4)} ETH</span></p>
-                      <p>PRM withdrawn: <span className="text-white font-semibold">{parseFloat(accountInfo.prmWithdrawn).toFixed(2)} PRM</span></p>
-                    </div>
+                    {isAccountLoading ? (
+                      <div className="space-y-2">
+                        <LoadingBar className="h-4 w-40" />
+                        <LoadingBar className="h-4 w-48" />
+                        <LoadingBar className="h-4 w-36" />
+                      </div>
+                    ) : (
+                      <div className="text-sm space-y-1">
+                        <p>Your contribution: <span className="text-white font-semibold">{parseFloat(accountInfo.contribution).toFixed(4)} ETH</span></p>
+                        <p>Weighted contribution: <span className="text-white font-semibold">{parseFloat(accountInfo.weightedContribution).toFixed(4)} ETH</span></p>
+                        <p>PRM withdrawn: <span className="text-white font-semibold">{parseFloat(accountInfo.prmWithdrawn).toFixed(2)} PRM</span></p>
+                      </div>
+                    )}
                   </div>
 
                   <button
                     onClick={handleClaimTokens}
-                    disabled={isLoading || parseFloat(accountInfo.contribution) === 0}
+                    disabled={isLoading || isAccountLoading || parseFloat(accountInfo.contribution) === 0 || !!accountError}
                     className="w-full px-6 py-4 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
                     {isLoading ? (
@@ -553,6 +718,11 @@ export default function PRMFunding() {
               {/* Your Participation */}
               <div className="p-6 bg-dark-800/50 backdrop-blur-sm border border-slate-500/20 rounded-xl">
                 <h3 className="text-lg font-semibold text-white mb-4">Your Participation</h3>
+                {accountError && (
+                  <div className="mb-4 rounded-lg border border-rose-900/40 bg-rose-950/20 px-3 py-2 text-xs text-rose-200">
+                    Unable to load wallet participation data. {accountError}
+                  </div>
+                )}
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-dark-300">Connected Account:</span>
@@ -562,15 +732,33 @@ export default function PRMFunding() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-dark-300">Your Contribution:</span>
-                    <span className="text-white font-semibold">{parseFloat(accountInfo.contribution).toFixed(4)} ETH</span>
+                    {isAccountLoading ? (
+                      <LoadingBar className="h-4 w-24" />
+                    ) : accountError ? (
+                      <span className="text-rose-300 font-semibold">Unavailable</span>
+                    ) : (
+                      <span className="text-white font-semibold">{parseFloat(accountInfo.contribution).toFixed(4)} ETH</span>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <span className="text-dark-300">Weighted Contribution:</span>
-                    <span className="text-white font-semibold">{parseFloat(accountInfo.weightedContribution).toFixed(4)} ETH</span>
+                    {isAccountLoading ? (
+                      <LoadingBar className="h-4 w-24" />
+                    ) : accountError ? (
+                      <span className="text-rose-300 font-semibold">Unavailable</span>
+                    ) : (
+                      <span className="text-white font-semibold">{parseFloat(accountInfo.weightedContribution).toFixed(4)} ETH</span>
+                    )}
                   </div>
                   <div className="flex justify-between">
                     <span className="text-dark-300">PRM Claimed:</span>
-                    <span className="text-white font-semibold">{parseFloat(accountInfo.prmWithdrawn).toFixed(2)} PRM</span>
+                    {isAccountLoading ? (
+                      <LoadingBar className="h-4 w-24" />
+                    ) : accountError ? (
+                      <span className="text-rose-300 font-semibold">Unavailable</span>
+                    ) : (
+                      <span className="text-white font-semibold">{parseFloat(accountInfo.prmWithdrawn).toFixed(2)} PRM</span>
+                    )}
                   </div>
                   <div className="flex justify-between pt-2 mt-2 border-t border-slate-500/20">
                     <span className="flex items-center text-dark-300">
@@ -583,16 +771,32 @@ export default function PRMFunding() {
                         </div>
                       </div>
                     </span>
-                    <span className="text-emerald-400 font-bold">
-                      {(() => {
-                        const myWeighted = parseFloat(accountInfo.weightedContribution)
-                        const totalWeighted = parseFloat(icoInfo.weightedETHRaised)
-                        const prmNow = totalWeighted > 0 ? (40000000 * (myWeighted / totalWeighted)) : 0
-                        return prmNow.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                      })()} PRM
-                    </span>
+                    {isAccountLoading || isIcoLoading ? (
+                      <LoadingBar className="h-5 w-28" />
+                    ) : accountError || icoError ? (
+                      <span className="text-rose-300 font-bold">Unavailable</span>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">
+                        {(() => {
+                          const myWeighted = parseFloat(accountInfo.weightedContribution)
+                          const totalWeighted = parseFloat(icoInfo.weightedETHRaised)
+                          const prmNow = totalWeighted > 0 ? (40000000 * (myWeighted / totalWeighted)) : 0
+                          return prmNow.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                        })()} PRM
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {address && !isAccountLoading && (
+                  <button
+                    type="button"
+                    onClick={() => void loadAccountInfo({ forceRefresh: true })}
+                    className="mt-4 text-sm font-medium text-slate-300 transition-colors hover:text-white"
+                  >
+                    Refresh participation
+                  </button>
+                )}
               </div>
 
               {/* Important Notes */}
