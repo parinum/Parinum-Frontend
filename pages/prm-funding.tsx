@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import ParinumLogo from '@/icons/parinum.svg'
@@ -394,6 +394,24 @@ export default function PRMFunding() {
           </motion.div>
         </div>
       )}
+
+      <AnimatePresence>
+        {isIcoLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.2 }}
+            className="pointer-events-none fixed inset-x-4 top-24 z-40 flex justify-center sm:inset-x-auto sm:right-6"
+          >
+            <div className="inline-flex items-center gap-3 rounded-full border border-slate-300/60 bg-white/90 px-4 py-2 text-sm text-secondary-700 shadow-lg backdrop-blur-md dark:border-slate-600/60 dark:bg-dark-800/90 dark:text-dark-200">
+              <div className="h-4 w-4 rounded-full border-2 border-slate-400/40 border-t-slate-700 dark:border-white/30 dark:border-t-white animate-spin" />
+              <span>Loading live funding data...</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="min-h-screen pt-20 pb-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -423,13 +441,6 @@ export default function PRMFunding() {
                 </motion.button>
               </Link>
             </div>
-
-            {isIcoLoading && (
-              <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-slate-300/60 bg-white/80 px-4 py-2 text-sm text-secondary-700 shadow-sm backdrop-blur-sm dark:border-slate-600/60 dark:bg-dark-800/80 dark:text-dark-200">
-                <div className="h-4 w-4 rounded-full border-2 border-slate-400/40 border-t-slate-700 dark:border-white/30 dark:border-t-white animate-spin" />
-                <span>Loading live funding data...</span>
-              </div>
-            )}
 
             {!isIcoLoading && icoError && (
               <div className="mt-6 flex flex-col items-center gap-3">
