@@ -1339,18 +1339,20 @@ export const getAccountIcoInfo = async (
       ico,
       icoInterface.encodeFunctionData('contributors', [account])
     )
-    const contributor = icoInterface.decodeFunctionResult('contributors', contributorRaw)[0] as {
-      contribution: bigint
-      weightedContribution: bigint
-      ethReceived: bigint
-      prmWithdrawn: bigint
-    }
+    const contributor = icoInterface.decodeFunctionResult('contributors', contributorRaw)
+    const isReferer = contributor[0] as boolean
+    const ethReceived = contributor[1] as bigint
+    const contribution = contributor[2] as bigint
+    const weightedContribution = contributor[3] as bigint
+    const prmWithdrawn = contributor[4] as bigint
+
+    void isReferer
 
     const res: AccountIcoInfo = {
-      contribution: ethers.formatEther(contributor.contribution),
-      weightedContribution: ethers.formatEther(contributor.weightedContribution),
-      ethReceived: ethers.formatEther(contributor.ethReceived),
-      prmWithdrawn: ethers.formatEther(contributor.prmWithdrawn)
+      contribution: ethers.formatEther(contribution),
+      weightedContribution: ethers.formatEther(weightedContribution),
+      ethReceived: ethers.formatEther(ethReceived),
+      prmWithdrawn: ethers.formatEther(prmWithdrawn)
     }
     readCache.set(key, res)
     return res

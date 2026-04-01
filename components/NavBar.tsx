@@ -78,6 +78,16 @@ export default function NavBar({ children }: NavBarProps) {
   const router = useRouter()
   const { theme, resolvedTheme, setTheme } = useTheme()
 
+  const purchaseRoutes = [
+    '/purchases',
+    '/how-to-purchase',
+    '/create-purchase',
+    '/confirm-purchase',
+    '/release-purchase',
+    '/abort-purchase',
+    '/logs-purchase',
+  ]
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50)
@@ -107,11 +117,19 @@ export default function NavBar({ children }: NavBarProps) {
 
   const navigation = [
     { name: 'Home', href: '/' },
-    { name: 'Purchases', href: '/how-to-purchase' },
+    { name: 'Purchases', href: '/create-purchase' },
     { name: 'PRM', href: '/prm-funding' },
     { name: 'Staking', href: '/stake-dashboard' },
     { name: 'Governance', href: '/governance' },
   ]
+
+  const isNavItemActive = (href: string) => {
+    if (href === '/create-purchase') {
+      return purchaseRoutes.includes(router.pathname)
+    }
+
+    return router.pathname === href
+  }
 
   const appearanceOptions: { value: 'dark' | 'light' | 'system'; label: string; description: string; icon: JSX.Element }[] = [
     { value: 'dark', label: 'Dark', description: 'Dim surfaces, glowing accents', icon: <MoonIcon /> },
@@ -145,9 +163,9 @@ export default function NavBar({ children }: NavBarProps) {
                   key={item.name}
                   href={item.href}
                   className={`px-3 py-2 text-sm font-medium transition-all duration-300 rounded-lg nav-link ${
-                    router.pathname === item.href ? 'is-active' : ''
+                    isNavItemActive(item.href) ? 'is-active' : ''
                   }`}
-                  aria-current={router.pathname === item.href ? 'page' : undefined}
+                  aria-current={isNavItemActive(item.href) ? 'page' : undefined}
                 >
                   {item.name}
                 </Link>
@@ -235,7 +253,7 @@ export default function NavBar({ children }: NavBarProps) {
                   key={item.name}
                   href={item.href}
                   className={`block px-3 py-2 text-base font-medium rounded-lg nav-link ${
-                    router.pathname === item.href ? 'is-active' : ''
+                    isNavItemActive(item.href) ? 'is-active' : ''
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >

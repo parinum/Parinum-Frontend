@@ -19,7 +19,10 @@ import {
 } from 'wagmi/chains'
 import { fallback } from 'viem'
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID'
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim()
+const hasWalletConnectProjectId = Boolean(
+  walletConnectProjectId && walletConnectProjectId !== 'YOUR_PROJECT_ID'
+)
 
 const mainnetTransports = [
   process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL,
@@ -29,32 +32,32 @@ const mainnetTransports = [
   'https://mainnet.gateway.tenderly.co',
 ].filter((value): value is string => Boolean(value && value.trim()))
 
+const walletGroups = [
+  {
+    groupName: 'Popular',
+    wallets: [
+      metaMaskWallet,
+      coinbaseWallet,
+      braveWallet,
+      phantomWallet,
+    ],
+  },
+  {
+    groupName: 'More',
+    wallets: [argentWallet],
+  },
+]
+
+if (hasWalletConnectProjectId) {
+  walletGroups[0].wallets.push(walletConnectWallet, rainbowWallet)
+  walletGroups[1].wallets.push(trustWallet, ledgerWallet, okxWallet)
+}
+
 const connectors = connectorsForWallets(
-  [
-    {
-      groupName: 'Popular',
-      wallets: [
-        metaMaskWallet,
-        coinbaseWallet,
-        walletConnectWallet,
-        rainbowWallet,
-      ],
-    },
-    {
-      groupName: 'More',
-      wallets: [
-        trustWallet,
-        phantomWallet,
-        braveWallet,
-        ledgerWallet,
-        argentWallet,
-        okxWallet,
-      ],
-    },
-  ],
+  walletGroups,
   {
     appName: 'Parinum',
-    projectId,
+    projectId: walletConnectProjectId ?? 'YOUR_PROJECT_ID',
   }
 )
 
@@ -70,5 +73,6 @@ export const config = createConfig({
     [bsc.id]: http(),
     [polygon.id]: http(),
   },
+  multiInjectedProviderDiscovery: false,
   ssr: true,
 })

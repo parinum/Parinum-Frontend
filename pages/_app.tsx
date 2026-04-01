@@ -1,5 +1,6 @@
 import '@/styles/globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
+import Head from 'next/head'
 import type { AppProps } from 'next/app'
 import { AnimatePresence } from 'framer-motion'
 import { Toaster } from 'react-hot-toast'
@@ -73,6 +74,10 @@ export default function App({ Component, pageProps, router }: AppProps) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
+          <Head>
+            <link rel="icon" href="/favicon-light.svg?v=1" type="image/svg+xml" />
+            <link rel="shortcut icon" href="/favicon-light.svg?v=1" type="image/svg+xml" />
+          </Head>
           <ThemedRainbowKit>
             <AnimatePresence mode="wait" initial={false}>
               <Component {...pageProps} key={router.asPath} />
