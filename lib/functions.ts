@@ -129,6 +129,22 @@ export interface TransactionLog {
   isError?: boolean
 }
 
+export interface UserPurchase {
+  purchaseId: string            // clone contract address
+  role: 'buyer' | 'seller'      // the connected wallet's role in this deal
+  counterparty: string          // the other party's address
+  price: string                 // formatted, denominated in `symbol`
+  collateral: string            // formatted, denominated in `symbol`
+  tokenAddress: string
+  symbol: string                // native symbol or ERC-20 ticker
+  status: 'awaiting-confirmation' | 'in-escrow' | 'completed' | 'aborted'
+  category: 'ongoing' | 'history'
+  action: 'confirm' | 'release' | 'abort' | null // contextual next action for the viewer
+  createdAt: Date
+  updatedAt: Date               // timestamp of the latest known event for this purchase
+  txHash: string                // most relevant tx (creation, or completion if completed)
+}
+
 const getCoreAddresses = (chainId?: number | null) => {
   const effectiveChainId = chainId || 1
   const net = getParinumNetworkConfig(effectiveChainId)
@@ -1013,7 +1029,200 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
   }
 }
 
+// In-session cache so re-opening the Profile tab is instant. Keyed by chain + wallet.
+const userPurchasesCache = new Map<string, UserPurchase[]>()
 
+// Get all escrow purchases the wallet is involved in (buyer or seller) on the current chain,
+// grouped by clone purchaseId and classified into ongoing vs history.
+export const getUserPurchases = async (
+  wallet: string,
+  forceRefresh = false
+): Promise<UserPurchase[]> => {
+  try {
+    const { provider, chainId } = await initProvider()
+    const config = getParinumNetworkConfig(chainId)
+    if (!config || !config.factoryAddress) return []
+    if (!ethers.isAddress(wallet)) return []
+
+    const cacheKey = `${chainId}-${wallet.toLowerCase()}`
+    if (!forceRefresh && userPurchasesCache.has(cacheKey)) {
+      return userPurchasesCache.get(cacheKey)!
+    }
+
+    const factory = new ethers.Contract(config.factoryAddress, config.factoryAbi, provider)
+    const fromBlock = config.deploymentBlock || 0
+    const currentBlock = await provider.getBlockNumber()
+    const f = factory.filters as any
+
+    // 1. CreatedPurchase: complete set of purchases the wallet is in, with full detail.
+    //    CreatedPurchase(buyer, seller, price, collateral, tokenAddress, purchaseId) — buyer & seller indexed.
+    const [createdAsBuyer, createdAsSeller] = await Promise.all([
+      scanFactoryEvents(factory, f.CreatedPurchase(wallet), fromBlock, currentBlock),
+      scanFactoryEvents(factory, f.CreatedPurchase(null, wallet), fromBlock, currentBlock),
+    ])
+
+    // 2. Lifecycle events filtered by the wallet (first indexed arg is the party).
+    const [buyerUnresolved, sellerUnresolved, buyerCompleted, sellerCompleted] = await Promise.all([
+      scanFactoryEvents(factory, f.BuyerUnresolvedPurchase(wallet), fromBlock, currentBlock),
+      scanFactoryEvents(factory, f.SellerUnresolvedPurchase(wallet), fromBlock, currentBlock),
+      scanFactoryEvents(factory, f.BuyerCompletedPurchase(wallet), fromBlock, currentBlock),
+      scanFactoryEvents(factory, f.SellerCompletedPurchase(wallet), fromBlock, currentBlock),
+    ])
+
+    type Base = {
+      purchaseId: string
+      role: 'buyer' | 'seller'
+      counterparty: string
+      priceRaw: bigint
+      collateralRaw: bigint
+      tokenAddress: string
+      createdBlock: number
+      txHash: string
+    }
+    const records = new Map<string, Base>()
+
+    const ingestCreated = (logs: ethers.EventLog[], role: 'buyer' | 'seller') => {
+      for (const log of logs) {
+        const args = log.args as any
+        const purchaseId: string | undefined = args?.purchaseId
+        if (!purchaseId) continue
+        const key = purchaseId.toLowerCase()
+        if (records.has(key)) continue
+        records.set(key, {
+          purchaseId,
+          role,
+          counterparty: role === 'buyer' ? args.seller : args.buyer,
+          priceRaw: args.price,
+          collateralRaw: args.collateral,
+          tokenAddress: args.tokenAddress,
+          createdBlock: log.blockNumber,
+          txHash: log.transactionHash,
+        })
+      }
+    }
+    ingestCreated(createdAsBuyer, 'buyer')
+    ingestCreated(createdAsSeller, 'seller')
+
+    const confirmedIds = new Set<string>()
+    const completedLogs = new Map<string, ethers.EventLog>()
+    const markConfirmed = (logs: ethers.EventLog[]) => {
+      for (const log of logs) {
+        const id = (log.args as any)?.purchaseId?.toLowerCase()
+        if (id) confirmedIds.add(id)
+      }
+    }
+    const markCompleted = (logs: ethers.EventLog[]) => {
+      for (const log of logs) {
+        const id = (log.args as any)?.purchaseId?.toLowerCase()
+        if (id) completedLogs.set(id, log)
+      }
+    }
+    markConfirmed(buyerUnresolved)
+    markConfirmed(sellerUnresolved)
+    markCompleted(buyerCompleted)
+    markCompleted(sellerCompleted)
+
+    // Token metadata, fetched once per distinct token.
+    const distinctTokens = new Set<string>()
+    for (const r of records.values()) distinctTokens.add(r.tokenAddress)
+    const tokenMeta = new Map<string, { decimals: number; symbol: string }>()
+    await Promise.all(
+      Array.from(distinctTokens).map(async (tokenAddr) => {
+        if (isNativeTokenAddress(tokenAddr)) {
+          tokenMeta.set(tokenAddr, { decimals: 18, symbol: config.nativeSymbol || 'ETH' })
+          return
+        }
+        try {
+          const token = new ethers.Contract(tokenAddr, erc20ABI, provider)
+          let decimals = 18
+          let symbol = 'tokens'
+          try { decimals = Number(await token.decimals()) } catch { /* keep 18 */ }
+          try { symbol = await token.symbol() } catch { /* keep 'tokens' */ }
+          tokenMeta.set(tokenAddr, { decimals, symbol })
+        } catch {
+          tokenMeta.set(tokenAddr, { decimals: 18, symbol: 'tokens' })
+        }
+      })
+    )
+
+    const results: UserPurchase[] = []
+    for (const r of records.values()) {
+      const key = r.purchaseId.toLowerCase()
+      const meta = tokenMeta.get(r.tokenAddress) || { decimals: 18, symbol: config.nativeSymbol || 'ETH' }
+
+      let status: UserPurchase['status']
+      let category: UserPurchase['category']
+      let updatedBlock = r.createdBlock
+      let txHash = r.txHash
+
+      const completedLog = completedLogs.get(key)
+      if (completedLog) {
+        status = 'completed'
+        category = 'history'
+        updatedBlock = completedLog.blockNumber
+        txHash = completedLog.transactionHash
+      } else if (confirmedIds.has(key)) {
+        status = 'in-escrow'
+        category = 'ongoing'
+      } else {
+        // Created only — abort emits no event, so read the clone's state to disambiguate.
+        let state = 1
+        try {
+          const clone = new ethers.Contract(r.purchaseId, config.cloneAbi, provider)
+          state = Number(await clone.state())
+        } catch {
+          state = 3 // defensive: treat unreadable as aborted/history
+        }
+        if (state === 1) {
+          status = 'awaiting-confirmation'
+          category = 'ongoing'
+        } else {
+          status = 'aborted'
+          category = 'history'
+        }
+      }
+
+      let action: UserPurchase['action'] = null
+      if (status === 'awaiting-confirmation') {
+        action = r.role === 'seller' ? 'confirm' : 'abort'
+      } else if (status === 'in-escrow' && r.role === 'buyer') {
+        action = 'release'
+      }
+
+      const [createdBlockData, updatedBlockData] = await Promise.all([
+        provider.getBlock(r.createdBlock),
+        provider.getBlock(updatedBlock),
+      ])
+
+      results.push({
+        purchaseId: r.purchaseId,
+        role: r.role,
+        counterparty: r.counterparty,
+        price: ethers.formatUnits(r.priceRaw, meta.decimals),
+        collateral: ethers.formatUnits(r.collateralRaw, meta.decimals),
+        tokenAddress: r.tokenAddress,
+        symbol: meta.symbol,
+        status,
+        category,
+        action,
+        createdAt: createdBlockData?.timestamp
+          ? new Date(Number(createdBlockData.timestamp) * 1000)
+          : new Date(),
+        updatedAt: updatedBlockData?.timestamp
+          ? new Date(Number(updatedBlockData.timestamp) * 1000)
+          : new Date(),
+        txHash,
+      })
+    }
+
+    results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    userPurchasesCache.set(cacheKey, results)
+    return results
+  } catch (error) {
+    console.error('getUserPurchases error:', error)
+    return []
+  }
+}
 
 // Connect wallet
 export const connectWallet = async () => {
