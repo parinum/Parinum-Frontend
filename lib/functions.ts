@@ -869,6 +869,41 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<{ success:
   }
 }
 
+// Scan a factory event filter across the full block range in chunks.
+// 800-block chunks, batched 5 at a time, to respect RPC block-range limits.
+const scanFactoryEvents = async (
+  factory: ethers.Contract,
+  filter: any,
+  fromBlock: number,
+  toBlock: number
+): Promise<ethers.EventLog[]> => {
+  const CHUNK_SIZE = 800
+  const BATCH_SIZE = 5
+
+  const ranges: { start: number; end: number }[] = []
+  for (let start = fromBlock; start <= toBlock; start += CHUNK_SIZE) {
+    const end = Math.min(start + CHUNK_SIZE - 1, toBlock)
+    ranges.push({ start, end })
+  }
+
+  const logs: ethers.EventLog[] = []
+  for (let i = 0; i < ranges.length; i += BATCH_SIZE) {
+    const batch = ranges.slice(i, i + BATCH_SIZE)
+    await Promise.all(
+      batch.map(async ({ start, end }) => {
+        try {
+          const chunkLogs = await factory.queryFilter(filter, start, end)
+          logs.push(...(chunkLogs as ethers.EventLog[]))
+        } catch (chunkError) {
+          console.warn(`Failed to fetch logs in range ${start}-${end}:`, chunkError)
+        }
+      })
+    )
+  }
+
+  return logs
+}
+
 // Get transaction logs for a purchase wallet (factory events)
 export const getPurchaseLogs = async (walletAddress: string): Promise<TransactionLog[]> => {
   try {
@@ -890,17 +925,6 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
 
     const fromBlock = config.deploymentBlock || 0
     const currentBlock = await provider.getBlockNumber()
-    
-    // Chunk size to avoid RPC limits (some RPCs limit to 1000 blocks)
-    const CHUNK_SIZE = 800
-
-    // Pre-calculate ranges
-    const ranges: { start: number; end: number }[] = []
-    for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
-      const end = Math.min(start + CHUNK_SIZE - 1, currentBlock)
-      ranges.push({ start, end })
-    }
-    console.log(`[getPurchaseLogs] Scanning ${ranges.length} chunks from ${fromBlock} to ${currentBlock}`)
 
     // Fetch logs for the 4 key events
     const topics = [
@@ -912,28 +936,11 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
 
     const allLogsPromises = topics.map(async (topic) => {
       try {
-        // Access filters dynamically
         const filterCreator = (factory.filters as any)[topic.name]
         if (typeof filterCreator !== 'function') return []
-        
-        // We filter by wallet address using the topic filter if possible
+
         const filter = await filterCreator(walletAddress)
-        
-        const logs: any[] = []
-        
-        // Process chunks in batches of 5 to improve speed while respecting limits
-        const BATCH_SIZE = 5
-        for (let i = 0; i < ranges.length; i += BATCH_SIZE) {
-          const batch = ranges.slice(i, i + BATCH_SIZE)
-          await Promise.all(batch.map(async ({ start, end }) => {
-            try {
-              const chunkLogs = await factory.queryFilter(filter, start, end)
-              logs.push(...chunkLogs)
-            } catch (chunkError) {
-              console.warn(`Failed to fetch logs for ${topic.name} in range ${start}-${end}:`, chunkError)
-            }
-          }))
-        }
+        const logs = await scanFactoryEvents(factory, filter, fromBlock, currentBlock)
 
         return logs.map((l) => ({ l, type: topic.type }))
       } catch (e) {
