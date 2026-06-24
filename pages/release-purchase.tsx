@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import Layout from '@/components/Layout'
 import { ReleasePurchaseView } from '@/components/PurchaseFlowViews'
 import { releasePurchase, getPurchaseDetails, type PurchaseDetails } from '@/lib/functions'
@@ -18,6 +19,13 @@ export default function ReleasePurchase() {
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+
+  const router = useRouter()
+  useEffect(() => {
+    const id = router.query.id
+    if (typeof id === 'string' && id) setPurchaseId(id)
+  }, [router.query.id])
+
   const purchaseSteps = [
     { id: 'create', label: 'Create', active: false },
     { id: 'abort', label: 'Abort', active: false },
