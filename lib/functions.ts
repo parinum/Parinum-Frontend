@@ -967,7 +967,6 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
 
     const results = await Promise.all(allLogsPromises)
     const allLogs = results.flat()
-    console.log(allLogs)
 
 
     // Sort by block number descending
@@ -1145,7 +1144,19 @@ export const getUserPurchases = async (
       })
     )
 
-    const results: UserPurchase[] = []
+    // Pass 1: classify each record; collect the distinct block numbers we need timestamps for.
+    type Classified = {
+      r: Base
+      meta: { decimals: number; symbol: string }
+      status: UserPurchase['status']
+      category: UserPurchase['category']
+      action: UserPurchase['action']
+      updatedBlock: number
+      txHash: string
+    }
+    const classified: Classified[] = []
+    const blockNumbers = new Set<number>()
+
     for (const r of records.values()) {
       const key = r.purchaseId.toLowerCase()
       const meta = tokenMeta.get(r.tokenAddress) || { decimals: 18, symbol: config.nativeSymbol || 'ETH' }
@@ -1171,7 +1182,7 @@ export const getUserPurchases = async (
           const clone = new ethers.Contract(r.purchaseId, config.cloneAbi, provider)
           state = Number(await clone.state())
         } catch {
-          state = 3 // defensive: treat unreadable as aborted/history
+          state = 1 // fail-open: an unreadable state is treated as still awaiting confirmation (actionable), not aborted
         }
         if (state === 1) {
           status = 'awaiting-confirmation'
@@ -1189,31 +1200,36 @@ export const getUserPurchases = async (
         action = 'release'
       }
 
-      const [createdBlockData, updatedBlockData] = await Promise.all([
-        provider.getBlock(r.createdBlock),
-        provider.getBlock(updatedBlock),
-      ])
-
-      results.push({
-        purchaseId: r.purchaseId,
-        role: r.role,
-        counterparty: r.counterparty,
-        price: ethers.formatUnits(r.priceRaw, meta.decimals),
-        collateral: ethers.formatUnits(r.collateralRaw, meta.decimals),
-        tokenAddress: r.tokenAddress,
-        symbol: meta.symbol,
-        status,
-        category,
-        action,
-        createdAt: createdBlockData?.timestamp
-          ? new Date(Number(createdBlockData.timestamp) * 1000)
-          : new Date(),
-        updatedAt: updatedBlockData?.timestamp
-          ? new Date(Number(updatedBlockData.timestamp) * 1000)
-          : new Date(),
-        txHash,
-      })
+      blockNumbers.add(r.createdBlock)
+      blockNumbers.add(updatedBlock)
+      classified.push({ r, meta, status, category, action, updatedBlock, txHash })
     }
+
+    // Fetch each needed block timestamp once (deduped across all records).
+    const blockTimes = new Map<number, Date>()
+    await Promise.all(
+      Array.from(blockNumbers).map(async (n) => {
+        const block = await provider.getBlock(n)
+        if (block?.timestamp) blockTimes.set(n, new Date(Number(block.timestamp) * 1000))
+      })
+    )
+
+    // Pass 2: assemble results using the prefetched timestamps.
+    const results: UserPurchase[] = classified.map((c) => ({
+      purchaseId: c.r.purchaseId,
+      role: c.r.role,
+      counterparty: c.r.counterparty,
+      price: ethers.formatUnits(c.r.priceRaw, c.meta.decimals),
+      collateral: ethers.formatUnits(c.r.collateralRaw, c.meta.decimals),
+      tokenAddress: c.r.tokenAddress,
+      symbol: c.meta.symbol,
+      status: c.status,
+      category: c.category,
+      action: c.action,
+      createdAt: blockTimes.get(c.r.createdBlock) || new Date(),
+      updatedAt: blockTimes.get(c.updatedBlock) || new Date(),
+      txHash: c.txHash,
+    }))
 
     results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     userPurchasesCache.set(cacheKey, results)
