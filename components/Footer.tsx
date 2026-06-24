@@ -79,18 +79,20 @@ export default function Footer() {
             <div className="text-secondary-500 dark:text-dark-400 text-sm mb-4 md:mb-0">
               © 2025 Parinum. All rights reserved.
             </div>
-            <Link 
-              href="/privacy-policy" 
-              className="text-sm text-secondary-500 dark:text-dark-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-            >
-              Privacy Policy
-            </Link>
-            <Link 
-              href="/faq" 
-              className="text-sm text-secondary-500 dark:text-dark-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-            >
-              FAQ
-            </Link>
+            <div className="flex flex-col items-center gap-2 md:flex-row md:gap-6">
+              <Link
+                href="/privacy-policy"
+                className="text-sm text-secondary-500 dark:text-dark-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/faq"
+                className="text-sm text-secondary-500 dark:text-dark-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+              >
+                FAQ
+              </Link>
+            </div>
           </div>
         </div>
       </div>

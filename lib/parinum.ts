@@ -285,3 +285,21 @@ export const getParinumFactoryInterface = (chainId: number) => {
   const cfg = getParinumNetworkConfig(chainId)
   return cfg ? new Interface(cfg.factoryAbi) : undefined
 }
+
+const blockExplorersByEnvKey: Record<EnvKey, { url: string; name: string }> = {
+  ETHEREUM: { url: 'https://etherscan.io', name: 'Etherscan' },
+  BSC: { url: 'https://bscscan.com', name: 'BscScan' },
+  ARBITRUM: { url: 'https://arbiscan.io', name: 'Arbiscan' },
+  BASE: { url: 'https://basescan.org', name: 'BaseScan' },
+  POLYGON: { url: 'https://polygonscan.com', name: 'PolygonScan' },
+  LINEA: { url: 'https://lineascan.build', name: 'LineaScan' },
+  OPTIMISM: { url: 'https://optimistic.etherscan.io', name: 'Etherscan' },
+  UNICHAIN: { url: 'https://uniscan.xyz', name: 'Uniscan' },
+}
+
+// Resolve the block explorer for a chain (falls back to Etherscan for unknown chains).
+export const getBlockExplorer = (chainId?: number | null): { url: string; name: string } => {
+  const cfg = chainId ? parinumNetworks[chainId] : undefined
+  const envKey = cfg?.envKey ?? 'ETHEREUM'
+  return blockExplorersByEnvKey[envKey]
+}

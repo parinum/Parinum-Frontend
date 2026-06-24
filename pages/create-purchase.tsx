@@ -293,6 +293,12 @@ export default function CreatePurchase() {
             result.txHash ? ` (tx: ${result.txHash})` : ''
           }`
         )
+        // Reset the form so the user can't accidentally re-submit the same escrow
+        setSeller('')
+        setPrice('')
+        setCollateral('')
+        setPriceUsd('')
+        setCollateralUsd('')
       } else {
         setMessage(`Error: ${result.error}`)
       }
@@ -325,7 +331,6 @@ export default function CreatePurchase() {
             selectedToken={selectedToken}
             selectedTokenIcon={selectedTokenObj?.icon}
             tokens={tokens}
-            tokenAddress={tokenAddress}
             dropdownRef={dropdownRef}
             isDropdownOpen={isDropdownOpen}
             onToggleDropdown={() => setIsDropdownOpen(!isDropdownOpen)}

@@ -291,7 +291,7 @@ export default function CreateStake() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => router.push('/withdraw-dividend')}
+                    onClick={() => router.push('/stake-dashboard')}
                     className="w-full bg-slate-100 dark:bg-dark-700/50 text-secondary-900 dark:text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 hover:bg-primary-100 dark:hover:bg-primary-500/20 hover:text-primary-600 dark:hover:text-primary-400 border border-slate-200 dark:border-dark-600 hover:border-primary-500/30"
                   >
                     View Staking Dashboard
@@ -330,7 +330,7 @@ export default function CreateStake() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/withdraw-dividend')}
+              onClick={() => router.push('/stake-dashboard')}
               className="bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white py-3 px-8 rounded-xl font-semibold text-lg transition-all duration-300 hover:from-slate-300 hover:to-slate-400 dark:hover:from-slate-700 dark:hover:to-slate-800 shadow-lg hover:shadow-slate-500/25"
             >
               Back to Staking Dashboard

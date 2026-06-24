@@ -59,7 +59,6 @@ interface CreatePurchaseViewProps {
   selectedToken: string
   selectedTokenIcon?: StaticImageData
   tokens: PurchaseToken[]
-  tokenAddress: string
   dropdownRef: RefObject<HTMLDivElement>
   isDropdownOpen: boolean
   onToggleDropdown: () => void
@@ -131,7 +130,7 @@ export function CreatePurchaseView({
         <form onSubmit={onSubmit} className={cx('space-y-6', tutorialMode && 'pointer-events-none')}>
           <div className={cx('space-y-3 rounded-2xl transition-all duration-300', guideRing(tutorialTarget === 'seller'))}>
             <label className="flex items-center text-secondary-900 dark:text-white font-medium">
-              Wallet ID
+              Seller Address
               <div className="group relative ml-2">
                 <InfoIcon />
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-secondary-800 dark:bg-dark-900 border border-primary-500/30 rounded-lg text-sm text-secondary-200 dark:text-dark-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
@@ -354,6 +353,7 @@ interface PurchaseIdActionViewProps {
   onToggleDetails: () => void
   details: PurchaseDetails | null
   message: string
+  isSuccess?: boolean
   isLoading: boolean
   isSubmitDisabled: boolean
   submitLabel: string
@@ -376,6 +376,7 @@ function PurchaseIdActionView({
   onToggleDetails,
   details,
   message,
+  isSuccess = false,
   isLoading,
   isSubmitDisabled,
   submitLabel,
@@ -434,7 +435,7 @@ function PurchaseIdActionView({
             </div>
           </div>
 
-          {showDetails ? <div {...guideTargetProps('details', tutorialMode, 'top-right')} className={cx('rounded-2xl transition-all duration-300', guideRing(tutorialTarget === 'details'))}><PurchaseDetailsCard details={details} purchaseId={purchaseId} /></div> : null}
+          {showDetails && details ? <div {...guideTargetProps('details', tutorialMode, 'top-right')} className={cx('rounded-2xl transition-all duration-300', guideRing(tutorialTarget === 'details'))}><PurchaseDetailsCard details={details} purchaseId={purchaseId} /></div> : null}
 
           <div className={cx('rounded-2xl transition-all duration-300', guideRing(tutorialTarget === 'submit'))}>
             <button
@@ -456,7 +457,7 @@ function PurchaseIdActionView({
         </form>
       </div>
 
-      {message ? <div className={cx('mt-8 rounded-xl backdrop-blur-sm transition-all duration-300', guideRing(tutorialTarget === 'message'))}><div {...guideTargetProps('message', tutorialMode, 'top-right')} className="p-4 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-xl"><p className="text-secondary-600 dark:text-slate-400 font-mono text-sm break-all">{message}</p></div></div> : null}
+      {message ? <div className={cx('mt-8 rounded-xl backdrop-blur-sm transition-all duration-300', guideRing(tutorialTarget === 'message'))}><div {...guideTargetProps('message', tutorialMode, 'top-right')} className="p-4 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-xl"><p className={cx('font-mono text-sm break-all', isSuccess ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>{message}</p></div></div> : null}
 
       {infoSection}
     </>
@@ -470,6 +471,7 @@ interface ConfirmPurchaseViewProps {
   purchaseDetails: PurchaseDetails | null
   showDetails: boolean
   message: string
+  isSuccess?: boolean
   isLoading: boolean
   onToggleDetails: () => void
   onSubmit: (e: React.FormEvent) => void
@@ -568,6 +570,7 @@ interface AbortPurchaseViewProps {
   purchaseDetails: PurchaseDetails | null
   showDetails: boolean
   message: string
+  isSuccess?: boolean
   isLoading: boolean
   onToggleDetails: () => void
   onSubmit: (e: React.FormEvent) => void
@@ -583,6 +586,7 @@ export function AbortPurchaseView({
   purchaseDetails,
   showDetails,
   message,
+  isSuccess = false,
   isLoading,
   onToggleDetails,
   onSubmit,
@@ -632,7 +636,7 @@ export function AbortPurchaseView({
             </div>
           </div>
 
-          {showDetails ? <div {...guideTargetProps('details', tutorialMode, 'top-right')}><PurchaseDetailsCard details={purchaseDetails} purchaseId={purchaseId} /></div> : null}
+          {showDetails && purchaseDetails ? <div {...guideTargetProps('details', tutorialMode, 'top-right')}><PurchaseDetailsCard details={purchaseDetails} purchaseId={purchaseId} /></div> : null}
 
           <div className={cx('rounded-2xl transition-all duration-300', guideRing(tutorialTarget === 'submit'))}>
             <button type="submit" disabled={isLoading || !purchaseId} {...guideTargetProps('submit', tutorialMode)} className="w-full px-6 py-4 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-800 dark:text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
@@ -642,7 +646,7 @@ export function AbortPurchaseView({
         </form>
       </div>
 
-      {message ? <div className={cx('mt-8 rounded-xl transition-all duration-300', guideRing(tutorialTarget === 'message'))}><div {...guideTargetProps('message', tutorialMode, 'top-right')} className="p-4 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-xl backdrop-blur-sm"><p className="text-secondary-600 dark:text-slate-400 font-mono text-sm break-all">{message}</p></div></div> : null}
+      {message ? <div className={cx('mt-8 rounded-xl transition-all duration-300', guideRing(tutorialTarget === 'message'))}><div {...guideTargetProps('message', tutorialMode, 'top-right')} className="p-4 bg-white/70 dark:bg-dark-800/50 border border-primary-500/20 rounded-xl backdrop-blur-sm"><p className={cx('font-mono text-sm break-all', isSuccess ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>{message}</p></div></div> : null}
 
       {!tutorialMode ? (
         <>

@@ -42,6 +42,8 @@ export interface PurchaseDetails {
   price: string
   collateral: string
   tokenAddress: string
+  /** Display symbol for price/collateral (native symbol or ERC-20 ticker) */
+  symbol: string
   status: 'inactive' | 'created' | 'confirmed' | 'failed'
   timestamp: Date
 }
@@ -823,10 +825,16 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<{ success:
 
     const tokenIsNative = isNativeTokenAddress(tokenAddr)
     let decimals = 18
+    let symbol = parinumConfig.nativeSymbol || 'ETH'
     if (!tokenIsNative) {
       try {
         const token = new ethers.Contract(tokenAddr, erc20ABI, provider)
         decimals = await token.decimals()
+        try {
+          symbol = await token.symbol()
+        } catch {
+          symbol = 'tokens'
+        }
       } catch {
         decimals = 18
       }
@@ -846,6 +854,7 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<{ success:
       price: ethers.formatUnits(priceRaw, decimals),
       collateral: ethers.formatUnits(collateralRaw, decimals),
       tokenAddress: tokenAddr,
+      symbol,
       status: statusMap[Number(state)] || 'created',
       timestamp: latestBlock?.timestamp
         ? new Date(Number(latestBlock.timestamp) * 1000)
@@ -966,7 +975,7 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
             try {
                const val = (log.args as any).ethValue
                if (val) {
-                 amountStr = `${ethers.formatEther(val)} ETH`
+                 amountStr = `${ethers.formatEther(val)} ${config.nativeSymbol || 'ETH'}`
                }
             } catch (e) { /* ignore */ }
           }

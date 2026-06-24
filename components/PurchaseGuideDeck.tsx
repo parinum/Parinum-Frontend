@@ -195,9 +195,10 @@ const mockPurchaseDetails: PurchaseDetails = {
   id: '0x9eF6A1D31b3f7A8E6b1931F3C4AA5C28fA9e0813',
   seller: '0x84e7f05bD4129f4B86A4Ab8717aC1f21C8C6c7f2',
   buyer: '0x7D2A58bD55075e5C7A87A56a8F5E3d0b8A17f1C3',
-  price: '1200000000',
-  collateral: '400000000',
+  price: '1200',
+  collateral: '400',
   tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  symbol: 'USDC',
   status: 'created',
   timestamp: new Date('2026-03-14T12:00:00Z'),
 }
@@ -224,142 +225,6 @@ interface PurchaseGuideDeckProps {
 
 function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ')
-}
-
-function highlightClasses(isActive: boolean) {
-  return cx(
-    'transition-all duration-300',
-    isActive && 'ring-4 ring-sky-400/45 border-sky-400/60 shadow-[0_0_0_1px_rgba(56,189,248,0.4),0_20px_50px_rgba(56,189,248,0.18)]'
-  )
-}
-
-function MockStepNavigation({ activeStep }: { activeStep: GuideStepId }) {
-  return (
-    <div className="relative flex flex-wrap justify-center gap-2 rounded-xl border border-primary-500/20 bg-white/50 p-2 backdrop-blur-sm dark:bg-dark-800/30">
-      {purchaseSteps[activeStep].map((step) => (
-        <div
-          key={step.id}
-          className={cx(
-            'rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200',
-            step.active
-              ? 'bg-gradient-to-r from-primary-300 to-secondary-300 text-white shadow-lg dark:from-primary-700 dark:to-secondary-700'
-              : 'text-secondary-600 dark:text-dark-400'
-          )}
-        >
-          {step.label}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function MockLabel({ children }: { children: string }) {
-  return <p className="mb-3 text-sm font-medium text-secondary-900 dark:text-white">{children}</p>
-}
-
-function MockField({
-  label,
-  value,
-  placeholder,
-  active,
-  wide = false,
-  aside,
-}: {
-  label: string
-  value: string
-  placeholder?: string
-  active: boolean
-  wide?: boolean
-  aside?: string
-}) {
-  return (
-    <div className={wide ? 'space-y-3' : ''}>
-      <MockLabel>{label}</MockLabel>
-      <div
-        className={cx(
-          'flex min-h-[56px] items-center justify-between rounded-xl border border-primary-500/30 bg-slate-100 px-4 py-3 text-sm text-secondary-900 dark:bg-dark-700/50 dark:text-white',
-          highlightClasses(active)
-        )}
-      >
-        <span className={value ? '' : 'text-secondary-400 dark:text-dark-400'}>{value || placeholder}</span>
-        {aside ? <span className="text-xs text-secondary-500 dark:text-dark-300">{aside}</span> : null}
-      </div>
-    </div>
-  )
-}
-
-function MockButton({ label, active }: { label: string; active: boolean }) {
-  return (
-    <div
-      className={cx(
-        'flex min-h-[58px] items-center justify-center rounded-xl bg-gradient-to-r from-slate-200 to-slate-300 px-6 py-4 text-sm font-semibold text-slate-800 shadow-lg dark:from-slate-600 dark:to-slate-700 dark:text-white',
-        active && 'scale-[0.99] brightness-105',
-        highlightClasses(active)
-      )}
-    >
-      {label}
-    </div>
-  )
-}
-
-function MockStatus({ message, active }: { message: string; active: boolean }) {
-  return (
-    <div
-      className={cx(
-        'rounded-2xl border border-primary-500/20 bg-white/70 p-4 backdrop-blur-sm dark:bg-dark-800/50',
-        highlightClasses(active)
-      )}
-    >
-      <p className="break-all font-mono text-sm text-secondary-600 dark:text-slate-400">{message}</p>
-    </div>
-  )
-}
-
-function CreateMockPage({ sceneIndex, activeTarget }: { sceneIndex: number; activeTarget: string }) {
-  const values = {
-    seller: sceneIndex >= 0 ? '0x84e7f05bD4129f4B86A4Ab8717aC1f21C8C6c7f2' : '',
-    token: sceneIndex >= 1 ? 'USDC' : '',
-    price: sceneIndex >= 2 ? '1,200.00' : '',
-    collateral: sceneIndex >= 3 ? '400.00' : '',
-    message:
-      sceneIndex >= 5
-        ? 'Purchase ID: 0x9eF6A1D31b3f7A8E6b1931F3C4AA5C28fA9e0813 (tx: 0x70c9...4d1a)'
-        : 'Purchase ID will appear here',
-  }
-
-  return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h2 className="mb-4 text-3xl font-bold text-secondary-900 dark:text-white">Create Secure Purchase</h2>
-      </div>
-      <MockStepNavigation activeStep="create" />
-      <div className="rounded-2xl border border-primary-500/20 bg-white/70 p-8 backdrop-blur-sm dark:bg-dark-800/50">
-        <div className="space-y-6">
-          <MockField label="Wallet ID" value={values.seller} placeholder="0x1234567890abcdef1234567890abcdef12345678" active={activeTarget === 'seller'} wide />
-          <MockField label="Token" value={values.token} placeholder="Select Token" active={activeTarget === 'token'} aside={sceneIndex >= 1 ? 'Dropdown' : undefined} wide />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <MockField label="Price" value={values.price} placeholder="0.00" active={activeTarget === 'price'} aside="USDC" />
-            <MockField label="Collateral" value={values.collateral} placeholder="0.00" active={activeTarget === 'collateral'} aside="USDC" />
-          </div>
-          <div className="space-y-3">
-            <MockLabel>Purchase ID</MockLabel>
-            <div className={cx('rounded-xl border border-primary-500/20 bg-slate-100 px-4 py-3 dark:bg-dark-700/30', highlightClasses(activeTarget === 'message'))}>
-              <p className="break-all font-mono text-sm text-secondary-600 dark:text-dark-300">{values.message}</p>
-            </div>
-          </div>
-          <MockButton label="Create Purchase" active={activeTarget === 'submit'} />
-        </div>
-      </div>
-      <div className="rounded-2xl border border-primary-500/20 bg-white/70 p-6 backdrop-blur-sm dark:bg-dark-800/50">
-        <h3 className="mb-3 text-lg font-semibold text-secondary-900 dark:text-white">How it works</h3>
-        <div className="grid grid-cols-1 gap-4 text-sm text-secondary-600 dark:text-dark-300 md:grid-cols-3">
-          <div>1. Buyer sets the seller, token, price, and collateral.</div>
-          <div>2. The page returns a purchase ID after the transaction succeeds.</div>
-          <div>3. That purchase ID is shared with the seller for confirmation.</div>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function SlideMock({
@@ -394,7 +259,6 @@ function SlideMock({
         selectedToken={sceneIndex >= 1 ? createSelectedToken : 'Select Token'}
         selectedTokenIcon={sceneIndex >= 1 && createSelectedToken === 'USDC' ? UsdcIcon : undefined}
         tokens={tutorialTokens}
-        tokenAddress={tutorialTokens[1].address}
         dropdownRef={emptyDropdownRef}
         isDropdownOpen={createDropdownOpen}
         onToggleDropdown={() => {}}

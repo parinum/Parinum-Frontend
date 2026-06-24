@@ -104,7 +104,7 @@ export default function FAQ() {
               type="text"
               placeholder="Search questions..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setOpenIndex(null) }}
               className="w-full pl-11 pr-4 py-4 bg-white/70 dark:bg-dark-800/50 backdrop-blur-sm border border-primary-500/20 rounded-2xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 shadow-sm"
             />
           </div>
@@ -114,7 +114,7 @@ export default function FAQ() {
             {filteredFaqs.length > 0 ? (
               filteredFaqs.map((faq, index) => (
                 <motion.div
-                  key={index}
+                  key={faq.question}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}

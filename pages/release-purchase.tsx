@@ -32,6 +32,7 @@ export default function ReleasePurchase() {
       return
     }
 
+    setIsSuccess(false)
     if (!purchaseId) {
       setMessage('Please enter a purchase ID')
       return
@@ -42,15 +43,14 @@ export default function ReleasePurchase() {
       const result = await getPurchaseDetails(purchaseId)
       if (result.success && result.data) {
         setPurchaseDetails(result.data)
+        setShowDetails(true)
       } else {
         setMessage(result.error || 'Purchase not found')
         setPurchaseDetails(null)
       }
-      setShowDetails(true)
     } catch (e) {
       setMessage(`Error fetching details: ${e}`)
       setPurchaseDetails(null)
-      setShowDetails(true)
     } finally {
       setIsLoading(false)
     }
@@ -66,6 +66,9 @@ export default function ReleasePurchase() {
       if (result.success) {
         setMessage('Funds released successfully!')
         setIsSuccess(true)
+        // On-chain state just changed; drop the now-stale pre-action details card
+        setPurchaseDetails(null)
+        setShowDetails(false)
       } else {
         setMessage(`Error: ${result.error}`)
         console.log('Release Purchase Error:', result.error)
@@ -91,10 +94,17 @@ export default function ReleasePurchase() {
           <ReleasePurchaseView
             purchaseSteps={purchaseSteps}
             purchaseId={purchaseId}
-            onPurchaseIdChange={setPurchaseId}
+            onPurchaseIdChange={(value) => {
+              setPurchaseId(value)
+              setPurchaseDetails(null)
+              setShowDetails(false)
+              setMessage('')
+              setIsSuccess(false)
+            }}
             purchaseDetails={purchaseDetails}
             showDetails={showDetails}
             message={message}
+            isSuccess={isSuccess}
             isLoading={isLoading}
             onToggleDetails={handleGetDetails}
             onSubmit={handleSubmit}

@@ -26,9 +26,19 @@ const getSystemTheme = (): ResolvedTheme => {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<ThemeChoice>(() => getStoredTheme() ?? 'system')
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => (typeof window === 'undefined' ? 'dark' : getSystemTheme()))
+  // Initialize deterministically so the first client render matches the static-export HTML
+  // (which is generated with theme='system' / resolvedTheme='dark'). Reading localStorage or
+  // matchMedia in the initializer would diverge from the server output and trigger a hydration
+  // mismatch (and a logo/theme flash). The persisted preference is adopted after mount instead.
+  const [theme, setTheme] = useState<ThemeChoice>('system')
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark')
   const mediaQueryRef = useRef<MediaQueryList | null>(null)
+
+  // After hydration, adopt the persisted theme preference.
+  useEffect(() => {
+    const stored = getStoredTheme()
+    if (stored) setTheme(stored)
+  }, [])
 
   // Sync theme to DOM + storage
   useEffect(() => {

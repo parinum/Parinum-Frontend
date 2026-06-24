@@ -3,7 +3,9 @@ import { motion } from 'framer-motion'
 import Layout from '@/components/Layout'
 import PurchaseStepsNavigation from '@/components/PurchaseStepsNavigation'
 import { useRouter } from 'next/router'
+import { useChainId } from 'wagmi'
 import { getPurchaseLogs, TransactionLog } from '@/lib/functions'
+import { getBlockExplorer } from '@/lib/parinum'
 
 const InfoIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,6 +38,8 @@ export default function LogsPurchase() {
   const [error, setError] = useState('')
 
   const router = useRouter()
+  const chainId = useChainId()
+  const explorer = getBlockExplorer(chainId)
 
   const purchaseSteps = [
     { id: 'create', label: 'Create', active: false },
@@ -128,9 +132,9 @@ export default function LogsPurchase() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
 
-  const openEtherscan = (txHash: string) => {
+  const openExplorer = (txHash: string) => {
     if (!txHash || !txHash.startsWith('0x')) return
-    window.open(`https://etherscan.io/tx/${txHash}`, '_blank')
+    window.open(`${explorer.url}/tx/${txHash}`, '_blank')
   }
 
   // --- Summary helpers ---
@@ -177,15 +181,18 @@ export default function LogsPurchase() {
     // If not, we parse the amount string.
     
     let volume = 0
+    let unit = ''
     for (const log of completedLogs) {
-        // Try to parse amount string "0.5 ETH" -> 0.5
+        // Try to parse amount string e.g. "0.5 BNB" -> { value: 0.5, unit: 'BNB' }
         const parsed = parseAmount(log.amount)
         if (parsed) {
             volume += parsed.value
+            if (parsed.unit) unit = parsed.unit
         }
     }
-    
-    const volumeDisplay = `${volume.toLocaleString(undefined, { maximumFractionDigits: 6 })} ETH` // Simplified unit assumption
+
+    // Use whatever native symbol the enriched logs carry (BNB/MATIC/ETH/...), not a hardcoded one
+    const volumeDisplay = `${volume.toLocaleString(undefined, { maximumFractionDigits: 6 })}${unit ? ` ${unit}` : ''}`
 
     return { total: totalConfirmed, pending, successRatePct, volumeDisplay }
   }
@@ -280,7 +287,7 @@ export default function LogsPurchase() {
                       <p className="text-secondary-900 dark:text-white text-xl font-semibold mt-1">{s.pending}</p>
                     </div>
                     <div className="p-4 bg-slate-100 dark:bg-dark-700/30 border border-primary-500/20 rounded-xl">
-                      <span className="text-secondary-600 dark:text-dark-400 text-xs uppercase">Total Transactions</span>
+                      <span className="text-secondary-600 dark:text-dark-400 text-xs uppercase">Confirmed Purchases</span>
                       <p className="text-secondary-900 dark:text-white text-xl font-semibold mt-1">{s.total}</p>
                     </div>
                     <div className="p-4 bg-slate-100 dark:bg-dark-700/30 border border-primary-500/20 rounded-xl">
@@ -346,11 +353,11 @@ export default function LogsPurchase() {
                           <p className="text-secondary-900 dark:text-white font-mono text-sm">{truncateAddress(log.txHash)}</p>
                         </div>
                         <button
-                          onClick={() => openEtherscan(log.txHash)}
+                          onClick={() => openExplorer(log.txHash)}
                           disabled={!log.txHash || !log.txHash.startsWith('0x')}
                           className="flex items-center space-x-2 px-3 py-1 bg-primary-100 dark:bg-primary-500/20 hover:bg-primary-200 dark:hover:bg-primary-500/30 text-primary-700 dark:text-primary-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="text-sm">View on Etherscan</span>
+                          <span className="text-sm">View on {explorer.name}</span>
                           <ExternalLinkIcon />
                         </button>
                       </div>
@@ -370,20 +377,12 @@ export default function LogsPurchase() {
               <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-3">Event Types</h3>
               <div className="space-y-2 text-sm text-secondary-600 dark:text-dark-300">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span>Purchase Created - Initial escrow setup</span>
-                </div>
-                <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <span>Seller Confirmation - Collateral locked</span>
+                  <span>Purchase Confirmed (Buyer/Seller) - Collateral locked, awaiting completion</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                  <span>Funds Released - Payment completed</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                  <span>Purchase Aborted - Transaction cancelled</span>
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <span>Purchase Completed (Buyer/Seller) - Funds released, deal finished</span>
                 </div>
               </div>
             </div>
@@ -393,7 +392,7 @@ export default function LogsPurchase() {
               <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-3">Need Help?</h3>
               <div className="space-y-3 text-sm text-secondary-600 dark:text-dark-300">
                 <p>All transactions are recorded on the blockchain for transparency</p>
-                <p>Click &quot;View on Etherscan&quot; to see detailed blockchain data</p>
+                <p>Click &quot;View on {explorer.name}&quot; to see detailed blockchain data</p>
                 <p>Pending transactions may take a few minutes to confirm</p>
                 <p>Contact support if you notice any discrepancies</p>
               </div>

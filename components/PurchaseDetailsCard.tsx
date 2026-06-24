@@ -50,8 +50,9 @@ export default function PurchaseDetailsCard({ details, purchaseId }: PurchaseDet
   const displayStatus = details?.status || 'N/A'
   const displaySeller = details?.seller || 'N/A'
   const displayBuyer = details?.buyer || 'N/A'
-  const displayPrice = details?.price || 'N/A'
-  const displayCollateral = details?.collateral || 'N/A'
+  const symbolSuffix = details?.symbol ? ` ${details.symbol}` : ''
+  const displayPrice = details?.price ? `${details.price}${symbolSuffix}` : 'N/A'
+  const displayCollateral = details?.collateral ? `${details.collateral}${symbolSuffix}` : 'N/A'
   const displayTokenAddress = details?.tokenAddress || 'N/A'
 
   return (
@@ -104,12 +105,12 @@ export default function PurchaseDetailsCard({ details, purchaseId }: PurchaseDet
         </div>
 
         <div className="space-y-1">
-          <p className="text-sm text-secondary-500 dark:text-dark-400">Price (Values in Wei)</p>
+          <p className="text-sm text-secondary-500 dark:text-dark-400">Price</p>
           <p className="font-mono text-secondary-900 dark:text-white">{displayPrice}</p>
         </div>
 
         <div className="space-y-1">
-          <p className="text-sm text-secondary-500 dark:text-dark-400">Collateral (Values in Wei)</p>
+          <p className="text-sm text-secondary-500 dark:text-dark-400">Collateral</p>
           <p className="font-mono text-secondary-900 dark:text-white">{displayCollateral}</p>
         </div>
 

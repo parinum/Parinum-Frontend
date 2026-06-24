@@ -106,6 +106,7 @@ export default function PRMFunding() {
   const [ethPrice, setEthPrice] = useState(0)
   const [isUsdMode, setIsUsdMode] = useState(false)
   const [usdAmountDisplay, setUsdAmountDisplay] = useState('')
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
   // Fetch ETH/Native Token Price
   useEffect(() => {
@@ -282,6 +283,20 @@ export default function PRMFunding() {
     void loadAccountInfo({ forceRefresh: true })
   }, [address, loadAccountInfo])
 
+  // Keep the countdown fresh and auto-switch to the claim view once the deadline passes
+  useEffect(() => {
+    if (icoInfo.deploymentTime === '0' || icoError) return
+    const endTime = parseInt(icoInfo.deploymentTime) + parseInt(icoInfo.timeLimit)
+    const tick = () => {
+      const current = Math.floor(Date.now() / 1000)
+      setNow(current)
+      setIcoEnded(current > endTime)
+    }
+    tick()
+    const intervalId = setInterval(tick, 30000)
+    return () => clearInterval(intervalId)
+  }, [icoInfo.deploymentTime, icoInfo.timeLimit, icoError])
+
   // Handle buy PRM tokens
   const handleBuyTokens = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -347,7 +362,7 @@ export default function PRMFunding() {
   const formatTimeRemaining = () => {
     if (icoInfo.deploymentTime === '0') return { days: 0, hours: 0, text: 'Loading...' }
 
-    const currentTime = Math.floor(Date.now() / 1000)
+    const currentTime = now
     const endTime = parseInt(icoInfo.deploymentTime) + parseInt(icoInfo.timeLimit)
     const remaining = endTime - currentTime
     
@@ -655,6 +670,15 @@ export default function PRMFunding() {
                       />
                     </div>
                   </div>
+
+                  {parseFloat(ethAmount || '0') > 0 && parseFloat(estimatedPRM) > 0 && (
+                    <div className="flex items-center justify-between rounded-xl border border-slate-500/20 bg-slate-100 dark:bg-dark-700/40 px-4 py-3">
+                      <span className="text-sm text-secondary-600 dark:text-dark-300">You will receive ≈</span>
+                      <span className="text-sm font-semibold text-secondary-900 dark:text-white">
+                        {parseFloat(estimatedPRM).toLocaleString(undefined, { maximumFractionDigits: 2 })} PRM
+                      </span>
+                    </div>
+                  )}
 
                   <button
                     type="submit"
