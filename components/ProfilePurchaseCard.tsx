@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 import type { UserPurchase } from '@/lib/functions'
 
 interface ProfilePurchaseCardProps {
@@ -28,8 +29,19 @@ const truncate = (address: string) => {
 }
 
 export default function ProfilePurchaseCard({ purchase, explorerUrl, explorerName }: ProfilePurchaseCardProps) {
+  const [copied, setCopied] = useState(false)
   const statusStyle = STATUS_STYLES[purchase.status]
   const action = purchase.action ? ACTION_META[purchase.action] : null
+
+  const copyPurchaseId = async () => {
+    try {
+      await navigator.clipboard.writeText(purchase.purchaseId)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1200)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
     <motion.div
@@ -69,8 +81,22 @@ export default function ProfilePurchaseCard({ purchase, explorerUrl, explorerNam
 
       <div className="mt-4 pt-4 border-t border-primary-500/20 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <span className="text-secondary-600 dark:text-dark-400 text-sm">Contract:</span>
-          <p className="text-secondary-900 dark:text-white font-mono text-sm">{truncate(purchase.purchaseId)}</p>
+          <span className="text-secondary-600 dark:text-dark-400 text-sm">Purchase ID:</span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              readOnly
+              value={purchase.purchaseId}
+              className="w-64 max-w-full rounded-lg border border-primary-500/30 bg-primary-500/5 px-3 py-1.5 text-secondary-900 dark:text-white font-mono text-xs focus:outline-none"
+              aria-label="Purchase ID"
+            />
+            <button
+              type="button"
+              onClick={() => void copyPurchaseId()}
+              className="px-3 py-1.5 bg-primary-100 dark:bg-primary-500/20 hover:bg-primary-200 dark:hover:bg-primary-500/30 text-primary-700 dark:text-primary-400 rounded-lg transition-colors duration-200 text-xs font-medium"
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <a
