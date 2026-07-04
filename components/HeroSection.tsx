@@ -19,8 +19,8 @@ export default function HeroSection() {
   const [totalUsd, setTotalUsd] = useState<number | null>(null)
   const [statsUnavailable, setStatsUnavailable] = useState(false)
 
-  const backendEnabled = process.env.NEXT_PUBLIC_PROFILE_BACKEND_ENABLED === 'true'
-  const backendBaseUrl = process.env.NEXT_PUBLIC_PROFILE_BACKEND_URL?.trim().replace(/\/$/, '') || ''
+  const backendEnabled = (process.env.NEXT_PUBLIC_PROFILE_BACKEND_ENABLED ?? 'true') === 'true'
+  const backendBaseUrl = process.env.NEXT_PUBLIC_PROFILE_BACKEND_URL?.trim().replace(/\/$/, '') || 'https://api.parinum.com'
 
   useEffect(() => {
     if (!backendEnabled || !backendBaseUrl) {

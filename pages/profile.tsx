@@ -16,8 +16,8 @@ type BackendProfilePurchase = Omit<UserPurchase, 'createdAt' | 'updatedAt'> & {
   explorerUrl?: string
 }
 
-const backendEnabled = process.env.NEXT_PUBLIC_PROFILE_BACKEND_ENABLED === 'true'
-const backendBaseUrl = process.env.NEXT_PUBLIC_PROFILE_BACKEND_URL?.trim().replace(/\/$/, '') || ''
+const backendEnabled = (process.env.NEXT_PUBLIC_PROFILE_BACKEND_ENABLED ?? 'true') === 'true'
+const backendBaseUrl = process.env.NEXT_PUBLIC_PROFILE_BACKEND_URL?.trim().replace(/\/$/, '') || 'https://api.parinum.com'
 
 const normalizeBackendPurchases = (items: BackendProfilePurchase[]): UserPurchase[] =>
   items.map((item) => ({
