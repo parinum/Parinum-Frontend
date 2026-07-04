@@ -1433,103 +1433,49 @@ const scanEventLogs = async (
 export const getPurchaseLogs = async (walletAddress: string): Promise<TransactionLog[]> => {
   try {
     const { chainId } = await initProvider()
-    const config = getParinumNetworkConfig(chainId)
+    if (!ethers.isAddress(walletAddress)) return []
 
-    if (!config || !config.factoryAddress) {
-      console.warn('Network config or factory address not found')
+    const backendEnabled = (process.env.NEXT_PUBLIC_PROFILE_BACKEND_ENABLED ?? 'true') === 'true'
+    const backendBaseUrl = process.env.NEXT_PUBLIC_PROFILE_BACKEND_URL?.trim().replace(/\/$/, '') || 'https://api.parinum.com'
+    if (!backendEnabled || !backendBaseUrl) {
       return []
     }
 
-    if (!ethers.isAddress(walletAddress)) return []
-
-    // Reads go through the resilient public-RPC layer, not the wallet provider.
-    const provider = getReadOnlyProvider(chainId)
-    const iface = new ethers.Interface(config.factoryAbi)
-
-    const fromBlock = config.deploymentBlock || 0
-    const currentBlock = await getSafeBlockNumber(chainId, provider)
-
-    // Fetch logs for the 4 key events
-    const topics = [
-      { name: 'BuyerUnresolvedPurchase', type: 'BuyerUnresolved' },
-      { name: 'SellerUnresolvedPurchase', type: 'SellerUnresolved' },
-      { name: 'BuyerCompletedPurchase', type: 'BuyerCompleted' },
-      { name: 'SellerCompletedPurchase', type: 'SellerCompleted' },
-    ]
-
-    const allLogs: Array<{ l: ScannedLog; type: string }> = []
-    for (const topic of topics) {
-      try {
-        const logs = await scanEventLogs(
-          chainId,
-          config.factoryAddress,
-          provider,
-          iface,
-          topic.name,
-          [walletAddress],
-          fromBlock,
-          currentBlock
-        )
-        allLogs.push(...logs.map((l) => ({ l, type: topic.type })))
-      } catch (e) {
-        console.warn(`Failed to fetch logs for ${topic.name}`, e)
-      }
+    const params = new URLSearchParams({ chainId: String(chainId), limit: '400' })
+    const response = await fetch(`${backendBaseUrl}/logs/${walletAddress}?${params.toString()}`)
+    if (!response.ok) {
+      throw new Error(`Backend request failed with ${response.status}`)
     }
 
+    const payload = (await response.json()) as {
+      items?: Array<{
+        id: string
+        timestamp: string
+        action: string
+        status: 'success' | 'pending' | 'failed'
+        txHash: string
+        from: string
+        to: string
+        amount?: string
+        gasUsed?: string | null
+        message?: string
+        isError?: boolean
+      }>
+    }
 
-    // Sort by block number descending
-    allLogs.sort((a, b) => b.l.blockNumber - a.l.blockNumber)
-
-    // Enrich logs
-    const enrichedLogs = await Promise.all(
-      allLogs.map(async ({ l, type }) => {
-        try {
-          const log = l
-          const [block, receipt] = await Promise.all([
-            provider.getBlock(log.blockNumber),
-            provider.getTransactionReceipt(log.transactionHash),
-          ])
-
-          const timestamp = block?.timestamp
-            ? new Date(Number(block.timestamp) * 1000)
-            : new Date()
-
-          let action = 'Unknown'
-          if (type === 'BuyerUnresolved') action = 'Purchase Confirmed (Buyer)'
-          else if (type === 'SellerUnresolved') action = 'Purchase Confirmed (Seller)'
-          else if (type === 'BuyerCompleted') action = 'Purchase Completed (Buyer)'
-          else if (type === 'SellerCompleted') action = 'Purchase Completed (Seller)'
-
-          let amountStr = undefined
-          if (type.includes('Completed') && log.args) {
-            try {
-               const val = (log.args as any).ethValue
-               if (val) {
-                 amountStr = `${ethers.formatEther(val)} ${config.nativeSymbol || 'ETH'}`
-               }
-            } catch (e) { /* ignore */ }
-          }
-
-          return {
-            id: `${log.transactionHash}-${log.logIndex}`,
-            timestamp,
-            action,
-            status: receipt?.status === 1 ? 'success' : 'failed',
-            txHash: log.transactionHash,
-            from: receipt?.from || walletAddress,
-            to: receipt?.to || config.factoryAddress,
-            amount: amountStr,
-            gasUsed: receipt?.gasUsed?.toString(),
-            isError: receipt?.status !== 1,
-          } as TransactionLog
-        } catch (e) {
-          console.error('Error processing log', e)
-          return null
-        }
-      })
-    )
-
-    return enrichedLogs.filter((l): l is TransactionLog => l !== null)
+    return (Array.isArray(payload.items) ? payload.items : []).map((item) => ({
+      id: item.id,
+      timestamp: new Date(item.timestamp),
+      action: item.action,
+      status: item.status,
+      txHash: item.txHash,
+      from: item.from,
+      to: item.to,
+      amount: item.amount,
+      gasUsed: item.gasUsed || undefined,
+      message: item.message,
+      isError: item.isError,
+    }))
   } catch (error) {
     console.error('getPurchaseLogs error:', error)
     return []

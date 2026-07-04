@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { URL } from 'node:url'
+import { formatEther } from 'ethers'
 import { query } from './db'
 import { getIndexedChains } from './chains'
 import { isWalletAddress } from './indexer'
@@ -44,6 +45,19 @@ type SyncCheckpointRow = {
 type PurchaseVolumeRow = {
   total_usd: string | number | null
   purchase_count: string | number
+}
+
+type WalletLogRow = {
+  chain_id: number | string
+  purchase_address: string
+  buyer_address: string
+  seller_address: string
+  symbol: string
+  event_name: string
+  block_timestamp: Date | string
+  tx_hash: string
+  log_index: number
+  args: Record<string, unknown>
 }
 
 const chains = getIndexedChains()
@@ -316,6 +330,97 @@ const handleTotalVolumeUsd = async (response: ServerResponse) => {
   })
 }
 
+const handleWalletLogs = async (requestUrl: URL, response: ServerResponse, wallet: string) => {
+  const normalizedWallet = wallet.toLowerCase()
+  if (!isWalletAddress(normalizedWallet)) {
+    sendJson(response, 400, { error: 'Invalid wallet address' })
+    return
+  }
+
+  const values: unknown[] = [normalizedWallet]
+  const where = ['(p.buyer_address = $1 or p.seller_address = $1)']
+
+  const chainIds = parseChainIds(requestUrl.searchParams)
+  if (chainIds && chainIds.length > 0) {
+    values.push(chainIds)
+    where.push(`p.chain_id = any($${values.length})`)
+  }
+
+  const trackedEvents = [
+    'BuyerUnresolvedPurchase',
+    'SellerUnresolvedPurchase',
+    'BuyerCompletedPurchase',
+    'SellerCompletedPurchase',
+  ]
+  values.push(trackedEvents)
+  where.push(`pe.event_name = any($${values.length})`)
+
+  const requestedLimit = Number(requestUrl.searchParams.get('limit') || '200')
+  const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 200, 1), 1000)
+  values.push(limit)
+
+  const result = await query<WalletLogRow>(
+    `
+      select
+        p.chain_id,
+        p.purchase_address,
+        p.buyer_address,
+        p.seller_address,
+        p.symbol,
+        pe.event_name,
+        pe.block_timestamp,
+        pe.tx_hash,
+        pe.log_index,
+        pe.args
+      from purchase_events pe
+      inner join purchases p
+        on p.chain_id = pe.chain_id
+       and p.purchase_address = pe.purchase_address
+      where ${where.join(' and ')}
+      order by pe.block_timestamp desc, pe.block_number desc, pe.log_index desc
+      limit $${values.length}
+    `,
+    values
+  )
+
+  const items = result.rows.map((row) => {
+    let action = 'Unknown'
+    if (row.event_name === 'BuyerUnresolvedPurchase') action = 'Purchase Confirmed (Buyer)'
+    if (row.event_name === 'SellerUnresolvedPurchase') action = 'Purchase Confirmed (Seller)'
+    if (row.event_name === 'BuyerCompletedPurchase') action = 'Purchase Completed (Buyer)'
+    if (row.event_name === 'SellerCompletedPurchase') action = 'Purchase Completed (Seller)'
+
+    const args = row.args || {}
+    const buyer = typeof args.buyer === 'string' ? args.buyer : row.buyer_address
+    const seller = typeof args.seller === 'string' ? args.seller : row.seller_address
+
+    let amount: string | undefined
+    if (row.event_name.includes('Completed')) {
+      const rawEthValue = typeof args.ethValue === 'string' ? args.ethValue : null
+      if (rawEthValue && /^\d+$/.test(rawEthValue)) {
+        amount = `${formatEther(BigInt(rawEthValue))} ${row.symbol || chainMap.get(Number(row.chain_id))?.nativeSymbol || ''}`.trim()
+      }
+    }
+
+    return {
+      id: `${row.tx_hash}-${row.log_index}`,
+      chainId: Number(row.chain_id),
+      purchaseId: row.purchase_address,
+      timestamp: new Date(row.block_timestamp).toISOString(),
+      action,
+      status: 'success',
+      txHash: row.tx_hash,
+      from: row.event_name.startsWith('Seller') ? seller : buyer,
+      to: row.event_name.startsWith('Seller') ? buyer : seller,
+      amount,
+      gasUsed: null,
+      isError: false,
+    }
+  })
+
+  sendJson(response, 200, { items })
+}
+
 export const createApiServer = () =>
   createServer(async (request: IncomingMessage, response: ServerResponse) => {
     try {
@@ -337,6 +442,12 @@ export const createApiServer = () =>
 
       if (requestUrl.pathname === '/stats/total-volume-usd') {
         await handleTotalVolumeUsd(response)
+        return
+      }
+
+      const walletLogsMatch = requestUrl.pathname.match(/^\/logs\/([^/]+)$/)
+      if (walletLogsMatch) {
+        await handleWalletLogs(requestUrl, response, walletLogsMatch[1])
         return
       }
 
