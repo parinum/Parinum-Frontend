@@ -117,6 +117,7 @@ export interface VotingPower {
 
 export interface TransactionLog {
   id: string
+  purchaseId?: string
   timestamp: Date
   action: string
   status: 'success' | 'pending' | 'failed'
@@ -1465,6 +1466,7 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
 
     return (Array.isArray(payload.items) ? payload.items : []).map((item) => ({
       id: item.id,
+      purchaseId: (item as { purchaseId?: string }).purchaseId,
       timestamp: new Date(item.timestamp),
       action: item.action,
       status: item.status,

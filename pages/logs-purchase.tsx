@@ -150,48 +150,40 @@ export default function LogsPurchase() {
   }
 
   const summarizeLogs = (items: TransactionLog[]) => {
-    // Logic adapted from calculateWalletStats logic
-    // 1. Total Confirmed Purchases = Count of "Purchase Confirmed" logs (Buyer + Seller)
-    // 2. Completed Purchases = Count of "Purchase Completed" logs (Buyer + Seller)
-    // 3. Unresolved (Active) = Confirmed - Completed
-    // 4. Volume = Sum of ethValue from "Purchase Completed" logs
-    
-    // Note: The logs returned by getPurchaseLogs are already enriched from the 4 specific events:
-    // ReceiverUnresolvedPurchase -> 'Purchase Confirmed (Buyer)'
-    // SellerUnresolvedPurchase -> 'Purchase Confirmed (Seller)'
-    // ReceiverCompletedPurchase -> 'Purchase Completed (Buyer)'
-    // SellerCompletedPurchase -> 'Purchase Completed (Seller)'
+    // Count purchases, not individual buyer/seller event rows.
+    const confirmedLogs = items.filter((l) => l.action.includes('Confirmed'))
+    const completedLogs = items.filter((l) => l.action.includes('Completed'))
 
-    const confirmedLogs = items.filter(l => l.action.includes('Confirmed'))
-    const completedLogs = items.filter(l => l.action.includes('Completed'))
+    const confirmedPurchaseIds = new Set(
+      confirmedLogs.map((l) => l.purchaseId || l.txHash).filter(Boolean)
+    )
+    const completedPurchaseIds = new Set(
+      completedLogs.map((l) => l.purchaseId || l.txHash).filter(Boolean)
+    )
 
-    const totalConfirmed = confirmedLogs.length
-    const totalCompleted = completedLogs.length
-    
+    // Some historical data may have completion logs without unresolved logs.
+    // In that case, treat completed purchases as confirmed too.
+    const totalConfirmed = Math.max(confirmedPurchaseIds.size, completedPurchaseIds.size)
+    const totalCompleted = completedPurchaseIds.size
+
     const pending = Math.max(0, totalConfirmed - totalCompleted)
-    
-    let successRatePct: number | null = 0
-    if (totalConfirmed > 0) {
-        successRatePct = (totalCompleted / totalConfirmed) * 100
-    }
+    const successRatePct = totalConfirmed > 0 ? (totalCompleted / totalConfirmed) * 100 : 0
 
-    // Volume calculation
-    // We need the raw value. TransactionLog usually has string amount.
-    // We stored rawEthValue in the log object in getPurchaseLogs if we updated interface.
-    // If not, we parse the amount string.
-    
+    // Sum each completion tx once to avoid double-counting buyer+seller completion rows.
+    const seenCompletionTx = new Set<string>()
     let volume = 0
     let unit = ''
     for (const log of completedLogs) {
-        // Try to parse amount string e.g. "0.5 BNB" -> { value: 0.5, unit: 'BNB' }
-        const parsed = parseAmount(log.amount)
-        if (parsed) {
-            volume += parsed.value
-            if (parsed.unit) unit = parsed.unit
-        }
+      if (seenCompletionTx.has(log.txHash)) continue
+      seenCompletionTx.add(log.txHash)
+
+      const parsed = parseAmount(log.amount)
+      if (parsed) {
+        volume += parsed.value
+        if (parsed.unit) unit = parsed.unit
+      }
     }
 
-    // Use whatever native symbol the enriched logs carry (BNB/MATIC/ETH/...), not a hardcoded one
     const volumeDisplay = `${volume.toLocaleString(undefined, { maximumFractionDigits: 6 })}${unit ? ` ${unit}` : ''}`
 
     return { total: totalConfirmed, pending, successRatePct, volumeDisplay }
