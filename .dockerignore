@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log*
+.next
+out
+.git
+.github
+.DS_Store
+.env
+backend/.env
+backend/dist

@@ -1,0 +1,10 @@
+{
+  "name": "parinum-profile-indexer-runtime",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@parinum/contracts": "file:vendor/parinum-contracts.tgz",
+    "ethers": "^6.8.1",
+    "pg": "^8.22.0"
+  }
+}

@@ -15,7 +15,7 @@ export const WalletButton = () => {
               type="button"
               disabled
               aria-busy="true"
-              className="px-5 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg navbar-wallet-btn opacity-70 cursor-wait"
+              className="h-10 px-5 rounded-xl font-medium transition-all duration-300 shadow-lg navbar-wallet-btn opacity-70 cursor-wait inline-flex items-center whitespace-nowrap leading-none"
             >
               Loading wallet...
             </button>
@@ -27,7 +27,7 @@ export const WalletButton = () => {
             <button
               type="button"
               onClick={openConnectModal}
-              className="px-5 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg navbar-wallet-btn hover:opacity-90"
+              className="h-10 px-5 rounded-xl font-medium transition-all duration-300 shadow-lg navbar-wallet-btn hover:opacity-90 inline-flex items-center whitespace-nowrap leading-none"
             >
               Connect
             </button>
@@ -39,7 +39,7 @@ export const WalletButton = () => {
             <button
               type="button"
               onClick={openChainModal}
-              className="px-5 py-2 rounded-xl font-medium transition-all duration-300 bg-red-500/20 text-red-400 border border-red-500/30"
+              className="h-10 px-5 rounded-xl font-medium transition-all duration-300 bg-red-500/20 text-red-400 border border-red-500/30 inline-flex items-center whitespace-nowrap leading-none"
             >
               Wrong network ({chain.id})
             </button>
@@ -83,7 +83,7 @@ export const WalletButton = () => {
             <button
               type="button"
               onClick={openAccountModal}
-              className="px-4 py-2 rounded-xl font-medium transition-all duration-300 bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+              className="h-10 px-4 rounded-xl font-medium transition-all duration-300 bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 inline-flex items-center whitespace-nowrap leading-none"
             >
               {account.displayName}
             </button>

@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "backend:build": "tsc -p backend/tsconfig.json",
+    "backend:serve": "npm run backend:build && node backend/dist/main.js",
+    "backend:migrate": "npm run backend:build && node backend/dist/main.js migrate",
+    "backend:backfill": "npm run backend:build && node backend/dist/main.js backfill",
+    "backend:seed-csv": "npm run backend:build && node backend/dist/main.js seed-csv"
   },
   "dependencies": {
     "@parinum/contracts": "github:parinum/Parinum-Upgradeable#main",
@@ -18,6 +23,7 @@
     "framer-motion": "^10.16.16",
     "lucide-react": "^0.294.0",
     "next": "^14.2.33",
+    "pg": "^8.22.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
@@ -27,6 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
+    "@types/pg": "^8.20.0",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.16",

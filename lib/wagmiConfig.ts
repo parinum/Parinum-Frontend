@@ -29,7 +29,22 @@ const mainnetTransports = [
   process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
   'https://ethereum.publicnode.com',
   'https://eth.drpc.org',
-  'https://mainnet.gateway.tenderly.co',
+].filter((value): value is string => Boolean(value && value.trim()))
+
+const bscTransports = [
+  process.env.NEXT_PUBLIC_BSC_RPC_URL,
+  process.env.NEXT_PUBLIC_BINANCE_RPC_URL,
+  process.env.NEXT_PUBLIC_RPC_URL_BSC,
+  'https://bsc-mainnet.nodereal.io/v1/e9a36765eb8a40b9bd12e680a1fd2bc5',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc-dataseed1.binance.org',
+].filter((value): value is string => Boolean(value && value.trim()))
+
+const polygonTransports = [
+  process.env.NEXT_PUBLIC_POLYGON_RPC_URL,
+  process.env.NEXT_PUBLIC_MATIC_RPC_URL,
+  process.env.NEXT_PUBLIC_RPC_URL_POLYGON,
+  'https://polygon.drpc.org',
 ].filter((value): value is string => Boolean(value && value.trim()))
 
 const walletGroups = [
@@ -70,8 +85,8 @@ export const config = createConfig({
   ],
   transports: {
     [mainnet.id]: fallback(mainnetTransports.map((url) => http(url))),
-    [bsc.id]: http(),
-    [polygon.id]: http(),
+    [bsc.id]: fallback(bscTransports.map((url) => http(url))),
+    [polygon.id]: fallback(polygonTransports.map((url) => http(url))),
   },
   multiInjectedProviderDiscovery: false,
   ssr: true,

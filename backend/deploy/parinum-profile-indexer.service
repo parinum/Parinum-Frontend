@@ -1,0 +1,17 @@
+[Unit]
+Description=Parinum Profile Indexer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/parinum-profile-indexer
+EnvironmentFile=/opt/parinum-profile-indexer/.env
+# Keep the preload hook for environments where @parinum/contracts is vendored.
+ExecStart=/usr/bin/node -r /opt/parinum-profile-indexer/register-ts-node.js backend/dist/main.js
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

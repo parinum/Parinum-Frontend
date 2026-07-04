@@ -1,0 +1,37 @@
+services:
+  postgres:
+    profiles: ['local-db']
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: parinum_profile
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d parinum_profile']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      ssh:
+        - default
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      PROFILE_INDEXER_HOST: 0.0.0.0
+      PROFILE_INDEXER_PORT: 4100
+    ports:
+      - '4100:4100'
+    command: sh -c "node backend/dist/main.js migrate && node backend/dist/main.js"
+
+volumes:
+  postgres_data:

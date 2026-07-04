@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
  
 
 const ArrowRightIcon = () => (
@@ -15,7 +16,57 @@ const BookOpenIcon = () => (
 )
 
 export default function HeroSection() {
-  
+  const [totalUsd, setTotalUsd] = useState<number | null>(null)
+  const [statsUnavailable, setStatsUnavailable] = useState(false)
+
+  const backendEnabled = process.env.NEXT_PUBLIC_PROFILE_BACKEND_ENABLED === 'true'
+  const backendBaseUrl = process.env.NEXT_PUBLIC_PROFILE_BACKEND_URL?.trim().replace(/\/$/, '') || ''
+
+  useEffect(() => {
+    if (!backendEnabled || !backendBaseUrl) {
+      setStatsUnavailable(true)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 10_000)
+
+    const loadStats = async () => {
+      try {
+        const response = await fetch(`${backendBaseUrl}/stats/total-volume-usd`, {
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`Stats request failed with ${response.status}`)
+
+        const payload = (await response.json()) as { totalUsd?: string | number }
+        const value = Number(payload.totalUsd)
+        if (!Number.isFinite(value)) throw new Error('Invalid stats payload')
+
+        setTotalUsd(value)
+        setStatsUnavailable(false)
+      } catch {
+        setStatsUnavailable(true)
+      } finally {
+        window.clearTimeout(timeout)
+      }
+    }
+
+    void loadStats()
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timeout)
+    }
+  }, [backendBaseUrl, backendEnabled])
+
+  const formattedTotalUsd = useMemo(() => {
+    if (totalUsd == null) return null
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(totalUsd)
+  }, [totalUsd])
 
   return (
     <section className="relative flex items-center justify-center overflow-hidden pt-24 pb-4 md:pt-32 md:pb-6">
@@ -85,7 +136,18 @@ export default function HeroSection() {
             </Link>
           </motion.div>
 
-          {/* Stats removed per request */}
+          {/* Live purchase volume widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="mx-auto mt-4 max-w-md rounded-2xl border border-primary-500/20 bg-white/70 dark:bg-dark-800/40 px-5 py-4 backdrop-blur-sm shadow-sm"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-dark-300">All-time volume on Parinum</p>
+            <p className="mt-1 text-2xl md:text-3xl font-bold text-secondary-900 dark:text-white">
+              {formattedTotalUsd || '$0'}
+            </p>
+          </motion.div>
         </div>
       </div>
     </section>

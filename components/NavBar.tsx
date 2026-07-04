@@ -116,7 +116,6 @@ export default function NavBar({ children }: NavBarProps) {
   }, [])
 
   const navigation = [
-    { name: 'Home', href: '/' },
     { name: 'Purchases', href: '/create-purchase' },
     { name: 'Profile', href: '/profile' },
     { name: 'PRM', href: '/prm-funding' },

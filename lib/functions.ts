@@ -200,11 +200,27 @@ const getRpcUrlsForChain = (chainId?: number | null) => {
   const chain = config.chains.find((c) => c.id === effectiveChainId)
   const urls: string[] = []
 
-  const envCandidates = [
-    process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL,
-    process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
-    process.env.NEXT_PUBLIC_RPC_URL,
-  ]
+  const chainEnvCandidates: Record<number, Array<string | undefined>> = {
+    1: [
+      process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL,
+      process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
+      process.env.NEXT_PUBLIC_RPC_URL,
+    ],
+    56: [
+      process.env.NEXT_PUBLIC_BSC_RPC_URL,
+      process.env.NEXT_PUBLIC_BINANCE_RPC_URL,
+      process.env.NEXT_PUBLIC_RPC_URL_BSC,
+      process.env.NEXT_PUBLIC_RPC_URL,
+    ],
+    137: [
+      process.env.NEXT_PUBLIC_POLYGON_RPC_URL,
+      process.env.NEXT_PUBLIC_MATIC_RPC_URL,
+      process.env.NEXT_PUBLIC_RPC_URL_POLYGON,
+      process.env.NEXT_PUBLIC_RPC_URL,
+    ],
+  }
+
+  const envCandidates = chainEnvCandidates[effectiveChainId] || [process.env.NEXT_PUBLIC_RPC_URL]
 
   for (const candidate of envCandidates) {
     if (candidate?.trim()) {
@@ -213,10 +229,25 @@ const getRpcUrlsForChain = (chainId?: number | null) => {
   }
 
   if (effectiveChainId === 1) {
+    // Etherscan v2 handles log scanning for ETH. Keep 2 reliable RPCs for
+    // block number, state reads, and timestamp lookups only.
     urls.push(
       'https://ethereum.publicnode.com',
-      'https://eth.drpc.org',
-      'https://mainnet.gateway.tenderly.co'
+      'https://eth.drpc.org'
+    )
+  } else if (effectiveChainId === 56) {
+    // NodeReal is CORS-friendly and serves eth_getLogs (50k block limit handled
+    // by the parallel chunked scanner below). Binance dataseed nodes are kept
+    // as fallbacks for block number and state reads.
+    urls.push(
+      'https://bsc-mainnet.nodereal.io/v1/e9a36765eb8a40b9bd12e680a1fd2bc5',
+      'https://bsc-dataseed.binance.org',
+      'https://bsc-dataseed1.binance.org'
+    )
+  } else if (effectiveChainId === 137) {
+    // Etherscan v2 handles log scanning for Polygon. drpc.org covers the rest.
+    urls.push(
+      'https://polygon.drpc.org'
     )
   } else {
     for (const url of chain?.rpcUrls?.default?.http || []) {
@@ -229,14 +260,26 @@ const getRpcUrlsForChain = (chainId?: number | null) => {
 
 const RPC_TIMEOUT_MS = 2_500
 const preferredRpcUrlByChain = new Map<number, string>()
+const rpcUrlCooldownUntil = new Map<string, number>()
+const RATE_LIMIT_COOLDOWN_MS = 90_000
+
+const isRpcUrlCoolingDown = (url: string) => {
+  const until = rpcUrlCooldownUntil.get(url)
+  return typeof until === 'number' && until > Date.now()
+}
+
+const markRpcUrlRateLimited = (url: string) => {
+  rpcUrlCooldownUntil.set(url, Date.now() + RATE_LIMIT_COOLDOWN_MS)
+}
 
 const rpcRequest = async <T>(
   url: string,
   method: string,
-  params: unknown[]
+  params: unknown[],
+  timeoutMs: number = RPC_TIMEOUT_MS
 ): Promise<T> => {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const response = await fetch(url, {
@@ -279,45 +322,60 @@ const rpcRequest = async <T>(
 const rpcRequestWithFallback = async <T>(
   chainId: number,
   method: string,
-  params: unknown[]
+  params: unknown[],
+  timeoutMs: number = RPC_TIMEOUT_MS
 ): Promise<T> => {
   const rpcUrls = getRpcUrlsForChain(chainId)
   const preferredUrl = preferredRpcUrlByChain.get(chainId)
   let lastError: unknown = null
 
-  if (preferredUrl) {
+  const activeRpcUrls = rpcUrls.filter((url) => !isRpcUrlCoolingDown(url))
+
+  if (preferredUrl && !isRpcUrlCoolingDown(preferredUrl)) {
     try {
-      return await rpcRequest<T>(preferredUrl, method, params)
+      return await rpcRequest<T>(preferredUrl, method, params, timeoutMs)
     } catch (error) {
       lastError = error
+      if (chainId === 56 && looksLikeAlchemyGetLogsPlanLimit(error)) {
+        throw new Error(
+          'Alchemy BSC free tier allows only 10-block eth_getLogs ranges. Upgrade to PAYG or use another dedicated BSC RPC URL.'
+        )
+      }
+      if (looksLikeRateLimit(error)) {
+        markRpcUrlRateLimited(preferredUrl)
+      }
       preferredRpcUrlByChain.delete(chainId)
     }
   }
 
-  const candidateUrls = rpcUrls.filter((url) => url !== preferredUrl)
+  const candidateUrls = activeRpcUrls.filter((url) => url !== preferredUrl)
   if (!candidateUrls.length) {
+    if (chainId === 56) {
+      throw new Error(
+        'BSC RPC endpoints are rate-limited. Set NEXT_PUBLIC_BSC_RPC_URL to a dedicated BSC endpoint and retry.'
+      )
+    }
     throw new Error(formatEthersError(lastError) || `Unable to reach RPC for chain ${chainId}`)
   }
 
   try {
-    const winner = await new Promise<{ url: string; result: T }>((resolve, reject) => {
-      let pending = candidateUrls.length
-      let finalError: unknown = null
-
-      for (const url of candidateUrls) {
-        rpcRequest<T>(url, method, params)
-          .then((result) => resolve({ url, result }))
-          .catch((error) => {
-            finalError = error
-            pending -= 1
-            if (pending === 0) {
-              reject(finalError)
-            }
-          })
+    for (const url of candidateUrls) {
+      try {
+        const result = await rpcRequest<T>(url, method, params, timeoutMs)
+        preferredRpcUrlByChain.set(chainId, url)
+        return result
+      } catch (error) {
+        lastError = error
+        if (chainId === 56 && looksLikeAlchemyGetLogsPlanLimit(error)) {
+          throw new Error(
+            'Alchemy BSC free tier allows only 10-block eth_getLogs ranges. Upgrade to PAYG or use another dedicated BSC RPC URL.'
+          )
+        }
+        if (looksLikeRateLimit(error)) {
+          markRpcUrlRateLimited(url)
+        }
       }
-    })
-    preferredRpcUrlByChain.set(chainId, winner.url)
-    return winner.result
+    }
   } catch (error) {
     lastError = error
   }
@@ -352,18 +410,50 @@ const getReadOnlyProvider = (chainId?: number | null) => {
     ensAddress: (chain.contracts as any)?.ensRegistry?.address,
   }
 
-  if (rpcUrls.length === 1) {
-    return new ethers.JsonRpcProvider(rpcUrls[0], network)
+  // Use one explicit endpoint at a time for ethers provider reads. Some public
+  // endpoints respond in ways that cause provider-level coalescing errors on
+  // BSC/Polygon when mixed in FallbackProvider.
+  const preferred = preferredRpcUrlByChain.get(effectiveChainId)
+  const selected = preferred && rpcUrls.includes(preferred) ? preferred : rpcUrls[0]
+  return new ethers.JsonRpcProvider(selected, network)
+}
+
+const getSafeBlockNumber = async (chainId: number, provider: ethers.Provider): Promise<number> => {
+  try {
+    const hex = await rpcRequestWithFallback<string>(chainId, 'eth_blockNumber', [], LOGS_TIMEOUT_MS)
+    return Number(parseHexBigInt(hex))
+  } catch {
+    return provider.getBlockNumber()
+  }
+}
+
+const getSafeBlockTimestamp = async (
+  chainId: number,
+  provider: ethers.Provider,
+  blockNumber: number
+): Promise<Date | null> => {
+  const blockTag = '0x' + Math.max(0, Math.floor(blockNumber)).toString(16)
+  try {
+    const block = await rpcRequestWithFallback<{ timestamp?: string }>(
+      chainId,
+      'eth_getBlockByNumber',
+      [blockTag, false],
+      LOGS_TIMEOUT_MS
+    )
+    if (block?.timestamp) {
+      return new Date(Number(parseHexBigInt(block.timestamp)) * 1000)
+    }
+  } catch {
+    // fall through to provider path
   }
 
-  return new ethers.FallbackProvider(
-    rpcUrls.map((url, index) => ({
-      provider: new ethers.JsonRpcProvider(url, network),
-      priority: index + 1,
-      weight: 1,
-      stallTimeout: 1_500,
-    }))
-  )
+  try {
+    const block = await provider.getBlock(blockNumber)
+    if (block?.timestamp) return new Date(Number(block.timestamp) * 1000)
+  } catch {
+    // tolerate missing block metadata from flaky endpoints
+  }
+  return null
 }
 
 // Contract ABIs (simplified - you should import the full ABIs)
@@ -885,45 +975,464 @@ export const getPurchaseDetails = async (purchaseId: string): Promise<{ success:
   }
 }
 
-// Scan a factory event filter across the full block range in chunks.
-// 800-block chunks, batched 5 at a time, to respect RPC block-range limits.
-const scanFactoryEvents = async (
-  factory: ethers.Contract,
-  filter: any,
+// A decoded factory event log, shaped to the small surface the callers consume.
+export interface ScannedLog {
+  args: ethers.Result
+  blockNumber: number
+  transactionHash: string
+  logIndex: number
+}
+
+interface RawRpcLog {
+  topics: string[]
+  data: string
+  blockNumber: string
+  transactionHash: string
+  logIndex: string
+}
+
+const LOGS_TIMEOUT_MS = 15_000
+const EXPLORER_API_BASE = 'https://api.etherscan.io/v2/api'
+const EXPLORER_PAGE_SIZE = 1000
+const EXPLORER_MIN_INTERVAL_MS = 360
+const lastExplorerRequestAtByChain = new Map<number, number>()
+
+const getExplorerApiKey = () =>
+  process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY?.trim() ||
+  process.env.ETHERSCAN_API_KEY?.trim() ||
+  ''
+
+const isEtherscanV2ChainSupported = (chainId: number) =>
+  // BSC (56) requires a paid Etherscan API plan in v2 for logs.
+  [1, 10, 137, 8453, 42161, 59144].includes(chainId)
+
+const normalizeExplorerTopic = (topic: string) => {
+  const normalized = topic.toLowerCase()
+  // Address topics in logs are left-padded to 32 bytes.
+  if (/^0x[0-9a-f]{40}$/.test(normalized)) {
+    return `0x000000000000000000000000${normalized.slice(2)}`
+  }
+  return normalized
+}
+
+const waitForExplorerSlot = async (chainId: number) => {
+  const last = lastExplorerRequestAtByChain.get(chainId) || 0
+  const elapsed = Date.now() - last
+  if (elapsed < EXPLORER_MIN_INTERVAL_MS) {
+    await wait(EXPLORER_MIN_INTERVAL_MS - elapsed)
+  }
+  lastExplorerRequestAtByChain.set(chainId, Date.now())
+}
+
+const fetchLogsFromExplorer = async (
+  chainId: number,
+  address: string,
+  topics: Array<string | string[] | null>,
   fromBlock: number,
   toBlock: number
-): Promise<ethers.EventLog[]> => {
-  const CHUNK_SIZE = 800
-  const BATCH_SIZE = 5
+): Promise<RawRpcLog[]> => {
+  const apiKey = getExplorerApiKey()
+  if (!apiKey || !isEtherscanV2ChainSupported(chainId)) return []
 
-  const ranges: { start: number; end: number }[] = []
-  for (let start = fromBlock; start <= toBlock; start += CHUNK_SIZE) {
-    const end = Math.min(start + CHUNK_SIZE - 1, toBlock)
-    ranges.push({ start, end })
+  const topicParams: Array<[string, string]> = []
+  for (let i = 0; i < topics.length; i++) {
+    const topic = topics[i]
+    if (typeof topic !== 'string') continue
+    topicParams.push([`topic${i}`, normalizeExplorerTopic(topic)])
+    if (i > 0) {
+      topicParams.push([`topic0_${i}_opr`, 'and'])
+    }
   }
 
-  const logs: ethers.EventLog[] = []
-  for (let i = 0; i < ranges.length; i += BATCH_SIZE) {
-    const batch = ranges.slice(i, i + BATCH_SIZE)
-    await Promise.all(
-      batch.map(async ({ start, end }) => {
-        try {
-          const chunkLogs = await factory.queryFilter(filter, start, end)
-          logs.push(...(chunkLogs as ethers.EventLog[]))
-        } catch (chunkError) {
-          console.warn(`Failed to fetch logs in range ${start}-${end}:`, chunkError)
+  const logs: RawRpcLog[] = []
+  let page = 1
+
+  while (true) {
+    const search = new URLSearchParams({
+      chainid: String(chainId),
+      module: 'logs',
+      action: 'getLogs',
+      fromBlock: String(fromBlock),
+      toBlock: String(toBlock),
+      address,
+      page: String(page),
+      offset: String(EXPLORER_PAGE_SIZE),
+      apikey: apiKey,
+    })
+
+    for (const [k, v] of topicParams) {
+      search.append(k, v)
+    }
+
+    let payload: {
+      status?: string
+      message?: string
+      result?: RawRpcLog[] | string
+    } | null = null
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await waitForExplorerSlot(chainId)
+      const response = await fetch(`${EXPLORER_API_BASE}?${search.toString()}`)
+      if (!response.ok) {
+        if (attempt === 4) {
+          throw new Error(`Explorer request failed with status ${response.status}`)
         }
-      })
-    )
+        await wait(250 * (attempt + 1))
+        continue
+      }
+
+      payload = (await response.json()) as {
+        status?: string
+        message?: string
+        result?: RawRpcLog[] | string
+      }
+
+      const message = `${payload.message || ''} ${typeof payload.result === 'string' ? payload.result : ''}`.trim()
+      if (/rate limit|max calls per sec|too many requests|429/i.test(message)) {
+        if (attempt === 4) {
+          throw new Error(message || 'Explorer rate limit exceeded')
+        }
+        await wait(350 * (attempt + 1))
+        continue
+      }
+
+      break
+    }
+
+    if (!payload) {
+      throw new Error('Explorer response missing payload')
+    }
+
+    if (Array.isArray(payload.result)) {
+      logs.push(...payload.result)
+      if (payload.result.length < EXPLORER_PAGE_SIZE) break
+      page += 1
+      continue
+    }
+
+    const message = `${payload.message || ''} ${typeof payload.result === 'string' ? payload.result : ''}`.trim()
+    if (/no records/i.test(message)) break
+
+    throw new Error(message || 'Explorer request failed')
   }
 
   return logs
 }
 
+const getErrorText = (error: unknown) => {
+  if (!error) return ''
+  if (error instanceof Error) return `${error.name} ${error.message}`
+  if (typeof error === 'object') {
+    const err = error as {
+      shortMessage?: string
+      reason?: string
+      message?: string
+      code?: string | number
+      error?: { code?: string | number; message?: string }
+    }
+    return [
+      err.shortMessage,
+      err.reason,
+      err.message,
+      typeof err.code !== 'undefined' ? String(err.code) : '',
+      typeof err.error?.code !== 'undefined' ? String(err.error.code) : '',
+      err.error?.message,
+      (() => {
+        try {
+          return JSON.stringify(error)
+        } catch {
+          return ''
+        }
+      })(),
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+  return String(error)
+}
+
+// An RPC that rejects a wide range because it's too wide (vs. an auth/network
+// failure) is worth retrying in chunks; anything else should surface to the user.
+const looksLikeRangeLimit = (error: unknown) => {
+  const message = getErrorText(error)
+  return /range|too many|more than|limit|exceed|result set|response size|too large|timeout|10000|512|-32005|coalesce|missing response/i.test(message)
+}
+
+const looksLikeRateLimit = (error: unknown) => {
+  const message = getErrorText(error)
+  return /rate limit|too many requests|429|limit exceeded|throttle|try again|-32005|coalesce|missing response/i.test(message)
+}
+
+const looksLikeAlchemyGetLogsPlanLimit = (error: unknown) => {
+  const message = getErrorText(error)
+  return /eth_getlogs/i.test(message) && /10 block range|upgrade to payg|free tier/i.test(message)
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// BSC and other chains without explorer support use a parallel chunked scanner.
+// Keep the BSC defaults conservative to avoid provider 429 bursts.
+const BSC_CHUNK_SIZE = 45_000
+const BSC_CONCURRENCY = 1
+const BSC_BATCH_COOLDOWN_MS = 0
+const BSC_MIN_REQUEST_INTERVAL_MS = 500
+
+const fetchLogsInParallelChunks = async (
+  chainId: number,
+  address: string,
+  topics: Array<string | string[] | null>,
+  fromBlock: number,
+  toBlock: number
+): Promise<RawRpcLog[]> => {
+  const toHex = (n: number) => '0x' + Math.max(0, Math.floor(n)).toString(16)
+
+  // Build the full list of chunk ranges up front.
+  const ranges: { start: number; end: number }[] = []
+  for (let s = fromBlock; s <= toBlock; s += BSC_CHUNK_SIZE) {
+    ranges.push({ start: s, end: Math.min(s + BSC_CHUNK_SIZE - 1, toBlock) })
+  }
+
+  const results: RawRpcLog[] = []
+  let lastRequestAt = 0
+
+  // Process in parallel batches.
+  for (let i = 0; i < ranges.length; i += BSC_CONCURRENCY) {
+    const batch = ranges.slice(i, i + BSC_CONCURRENCY)
+    const batchResults = await Promise.all(
+      batch.map(async ({ start, end }) => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const elapsed = Date.now() - lastRequestAt
+            if (elapsed < BSC_MIN_REQUEST_INTERVAL_MS) {
+              await wait(BSC_MIN_REQUEST_INTERVAL_MS - elapsed)
+            }
+            lastRequestAt = Date.now()
+
+            return await rpcRequestWithFallback<RawRpcLog[]>(
+              chainId,
+              'eth_getLogs',
+              [{ address, topics, fromBlock: toHex(start), toBlock: toHex(end) }],
+              LOGS_TIMEOUT_MS
+            )
+          } catch (err) {
+            if (looksLikeRateLimit(err)) {
+              throw new Error(
+                'BSC public RPC rate-limited. Configure NEXT_PUBLIC_BSC_RPC_URL with a dedicated BSC endpoint.'
+              )
+            }
+            if (attempt === 1) throw err
+            await wait(400)
+          }
+        }
+        return [] as RawRpcLog[]
+      })
+    )
+    for (const chunk of batchResults) results.push(...chunk)
+
+    // Brief cooldown between batches to keep free-tier providers responsive.
+    if (i + BSC_CONCURRENCY < ranges.length) {
+      await wait(BSC_BATCH_COOLDOWN_MS)
+    }
+  }
+
+  return results
+}
+
+const fetchLogsWithAdaptiveRange = async (
+  chainId: number,
+  address: string,
+  topics: Array<string | string[] | null>,
+  fromBlock: number,
+  toBlock: number
+): Promise<RawRpcLog[]> => {
+  const toHex = (n: number) => '0x' + Math.max(0, Math.floor(n)).toString(16)
+
+  const fetchRange = (start: number, end: number) =>
+    rpcRequestWithFallback<RawRpcLog[]>(
+      chainId,
+      'eth_getLogs',
+      [{ address, topics, fromBlock: toHex(start), toBlock: toHex(end) }],
+      LOGS_TIMEOUT_MS
+    )
+
+  const fetchRangeWithRetry = async (start: number, end: number) => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await fetchRange(start, end)
+      } catch (error) {
+        lastError = error
+        if (!looksLikeRateLimit(error) || attempt === 3) break
+        await wait(300 * (attempt + 1))
+      }
+    }
+    throw lastError
+  }
+
+  const fetchRecursively = async (start: number, end: number): Promise<RawRpcLog[]> => {
+    try {
+      return await fetchRangeWithRetry(start, end)
+    } catch (error) {
+      if (!looksLikeRangeLimit(error)) throw error
+      if (start >= end) throw error
+
+      const mid = Math.floor((start + end) / 2)
+      const left = await fetchRecursively(start, mid)
+      const right = await fetchRecursively(mid + 1, end)
+      return [...left, ...right]
+    }
+  }
+
+  return fetchRecursively(fromBlock, toBlock)
+}
+
+const fetchLogsWithProviderAdaptiveRange = async (
+  provider: ethers.Provider,
+  address: string,
+  topics: Array<string | string[] | null>,
+  fromBlock: number,
+  toBlock: number
+): Promise<ethers.Log[]> => {
+  const fetchRange = (start: number, end: number) =>
+    provider.getLogs({
+      address,
+      topics,
+      fromBlock: start,
+      toBlock: end,
+    })
+
+  const fetchRangeWithRetry = async (start: number, end: number) => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await fetchRange(start, end)
+      } catch (error) {
+        lastError = error
+        if (!looksLikeRateLimit(error) || attempt === 3) break
+        await wait(300 * (attempt + 1))
+      }
+    }
+    throw lastError
+  }
+
+  const fetchRecursively = async (start: number, end: number): Promise<ethers.Log[]> => {
+    try {
+      return await fetchRangeWithRetry(start, end)
+    } catch (error) {
+      if (!looksLikeRangeLimit(error)) throw error
+      if (start >= end) throw error
+
+      const mid = Math.floor((start + end) / 2)
+      const left = await fetchRecursively(start, mid)
+      const right = await fetchRecursively(mid + 1, end)
+      return [...left, ...right]
+    }
+  }
+
+  return fetchRecursively(fromBlock, toBlock)
+}
+
+// Scan one factory event across [fromBlock, toBlock] via the resilient JSON-RPC
+// layer (off the wallet provider). It starts with one wide eth_getLogs call and,
+// when a node rejects the span, keeps bisecting until each slice is acceptable.
+// Throws if no endpoint can serve even the smallest slice, so the caller can
+// show an error instead of a misleading empty result.
+const scanEventLogs = async (
+  chainId: number,
+  address: string,
+  provider: ethers.Provider,
+  iface: ethers.Interface,
+  eventName: string,
+  indexedArgs: (string | null)[],
+  fromBlock: number,
+  toBlock: number
+): Promise<ScannedLog[]> => {
+  const topics = iface.encodeFilterTopics(eventName, indexedArgs)
+  let decoded: ScannedLog[] = []
+  const hasExplorer = Boolean(getExplorerApiKey()) && isEtherscanV2ChainSupported(chainId)
+
+  if (hasExplorer) {
+    // For ETH/Polygon (and other explorer-supported chains), treat explorer as
+    // the authoritative source for logs to avoid noisy RPC range failures.
+    const explorerLogs = await fetchLogsFromExplorer(chainId, address, topics, fromBlock, toBlock)
+    if (explorerLogs.length) {
+      for (const log of explorerLogs) {
+        try {
+          const parsed = iface.parseLog({ topics: log.topics, data: log.data })
+          if (!parsed) continue
+          decoded.push({
+            args: parsed.args,
+            blockNumber: parseInt(log.blockNumber, 16),
+            transactionHash: log.transactionHash,
+            logIndex: parseInt(log.logIndex, 16),
+          })
+        } catch {
+          // skip a log we can't decode rather than failing the whole scan
+        }
+      }
+    }
+    return decoded
+  }
+
+  // For chains without explorer support (e.g. BSC on a free key), use the
+  // parallel chunked scanner which keeps all 12 concurrent requests in flight
+  // to cover large ranges (32M+ blocks) in reasonable time.
+  const useParallelChunks = !isEtherscanV2ChainSupported(chainId)
+
+  try {
+    const rawLogs = useParallelChunks
+      ? await fetchLogsInParallelChunks(chainId, address, topics, fromBlock, toBlock)
+      : await fetchLogsWithAdaptiveRange(chainId, address, topics, fromBlock, toBlock)
+
+    for (const log of rawLogs) {
+      try {
+        const parsed = iface.parseLog({ topics: log.topics, data: log.data })
+        if (!parsed) continue
+        decoded.push({
+          args: parsed.args,
+          blockNumber: parseInt(log.blockNumber, 16),
+          transactionHash: log.transactionHash,
+          logIndex: parseInt(log.logIndex, 16),
+        })
+      } catch {
+        // skip a log we can't decode rather than failing the whole scan
+      }
+    }
+
+    return decoded
+  } catch (error) {
+    if (useParallelChunks) {
+      throw error
+    }
+
+    // If browser-level RPC fetch fails (CORS/network/provider edge cases), fall
+    // back to the provider's getLogs path with the same adaptive range splitting.
+    const providerLogs = await fetchLogsWithProviderAdaptiveRange(provider, address, topics, fromBlock, toBlock)
+
+    decoded = []
+    for (const log of providerLogs) {
+      try {
+        const parsed = iface.parseLog({ topics: log.topics, data: log.data })
+        if (!parsed) continue
+        decoded.push({
+          args: parsed.args,
+          blockNumber: log.blockNumber,
+          transactionHash: log.transactionHash,
+          logIndex: log.index,
+        })
+      } catch {
+        // skip a log we can't decode rather than failing the whole scan
+      }
+    }
+
+    return decoded
+  }
+}
+
 // Get transaction logs for a purchase wallet (factory events)
 export const getPurchaseLogs = async (walletAddress: string): Promise<TransactionLog[]> => {
   try {
-    const { provider, chainId } = await initProvider()
+    const { chainId } = await initProvider()
     const config = getParinumNetworkConfig(chainId)
 
     if (!config || !config.factoryAddress) {
@@ -933,14 +1442,12 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
 
     if (!ethers.isAddress(walletAddress)) return []
 
-    const factory = new ethers.Contract(
-      config.factoryAddress,
-      config.factoryAbi,
-      provider
-    )
+    // Reads go through the resilient public-RPC layer, not the wallet provider.
+    const provider = getReadOnlyProvider(chainId)
+    const iface = new ethers.Interface(config.factoryAbi)
 
     const fromBlock = config.deploymentBlock || 0
-    const currentBlock = await provider.getBlockNumber()
+    const currentBlock = await getSafeBlockNumber(chainId, provider)
 
     // Fetch logs for the 4 key events
     const topics = [
@@ -950,23 +1457,24 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
       { name: 'SellerCompletedPurchase', type: 'SellerCompleted' },
     ]
 
-    const allLogsPromises = topics.map(async (topic) => {
+    const allLogs: Array<{ l: ScannedLog; type: string }> = []
+    for (const topic of topics) {
       try {
-        const filterCreator = (factory.filters as any)[topic.name]
-        if (typeof filterCreator !== 'function') return []
-
-        const filter = await filterCreator(walletAddress)
-        const logs = await scanFactoryEvents(factory, filter, fromBlock, currentBlock)
-
-        return logs.map((l) => ({ l, type: topic.type }))
+        const logs = await scanEventLogs(
+          chainId,
+          config.factoryAddress,
+          provider,
+          iface,
+          topic.name,
+          [walletAddress],
+          fromBlock,
+          currentBlock
+        )
+        allLogs.push(...logs.map((l) => ({ l, type: topic.type })))
       } catch (e) {
         console.warn(`Failed to fetch logs for ${topic.name}`, e)
-        return []
       }
-    })
-
-    const results = await Promise.all(allLogsPromises)
-    const allLogs = results.flat()
+    }
 
 
     // Sort by block number descending
@@ -976,7 +1484,7 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
     const enrichedLogs = await Promise.all(
       allLogs.map(async ({ l, type }) => {
         try {
-          const log = l as ethers.EventLog
+          const log = l
           const [block, receipt] = await Promise.all([
             provider.getBlock(log.blockNumber),
             provider.getTransactionReceipt(log.transactionHash),
@@ -1003,7 +1511,7 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
           }
 
           return {
-            id: `${log.transactionHash}-${log.index}`,
+            id: `${log.transactionHash}-${log.logIndex}`,
             timestamp,
             action,
             status: receipt?.status === 1 ? 'success' : 'failed',
@@ -1031,6 +1539,51 @@ export const getPurchaseLogs = async (walletAddress: string): Promise<Transactio
 // In-session cache so re-opening the Profile tab is instant. Keyed by chain + wallet.
 const userPurchasesCache = new Map<string, UserPurchase[]>()
 
+// Cross-reload cache of discovered purchases (clones + classification), so a return
+// visit renders instantly while a fresh scan runs in the background.
+const PURCHASES_STORAGE_PREFIX = 'parinum-purchases-v1'
+const purchasesStorageKey = (chainId: number, wallet: string) =>
+  `${PURCHASES_STORAGE_PREFIX}-${chainId}-${wallet.toLowerCase()}`
+
+// Read the persisted purchases for instant hydration. Dates are stored as ISO
+// strings and rehydrated to Date. Returns null when absent or unreadable.
+export const getCachedUserPurchases = (
+  chainId: number | null | undefined,
+  wallet: string | null | undefined
+): UserPurchase[] | null => {
+  if (typeof window === 'undefined' || !chainId || !wallet) return null
+  try {
+    const raw = window.localStorage.getItem(purchasesStorageKey(chainId, wallet))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { purchases?: Array<Record<string, unknown>> }
+    if (!Array.isArray(parsed.purchases)) return null
+    return parsed.purchases.map((p) => ({
+      ...(p as unknown as UserPurchase),
+      createdAt: new Date(p.createdAt as string),
+      updatedAt: new Date(p.updatedAt as string),
+    }))
+  } catch {
+    return null
+  }
+}
+
+export const setCachedUserPurchases = (chainId: number, wallet: string, purchases: UserPurchase[]) => {
+  if (typeof window === 'undefined') return
+  try {
+    const serializable = purchases.map((p) => ({
+      ...p,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+    }))
+    window.localStorage.setItem(
+      purchasesStorageKey(chainId, wallet),
+      JSON.stringify({ purchases: serializable })
+    )
+  } catch {
+    // localStorage may be full or disabled (private mode) — caching is best-effort.
+  }
+}
+
 // Get all escrow purchases the wallet is involved in (buyer or seller) on the current chain,
 // grouped by clone purchaseId and classified into ongoing vs history.
 export const getUserPurchases = async (
@@ -1038,7 +1591,7 @@ export const getUserPurchases = async (
   forceRefresh = false
 ): Promise<UserPurchase[]> => {
   try {
-    const { provider, chainId } = await initProvider()
+    const { chainId } = await initProvider()
     const config = getParinumNetworkConfig(chainId)
     if (!config || !config.factoryAddress) return []
     if (!ethers.isAddress(wallet)) return []
@@ -1048,25 +1601,40 @@ export const getUserPurchases = async (
       return userPurchasesCache.get(cacheKey)!
     }
 
-    const factory = new ethers.Contract(config.factoryAddress, config.factoryAbi, provider)
+    // Reads go through the resilient public-RPC layer, never the wallet provider:
+    // the scans below alone would be thousands of calls and would throttle a wallet RPC.
+    const provider = getReadOnlyProvider(chainId)
+    const iface = new ethers.Interface(config.factoryAbi)
     const fromBlock = config.deploymentBlock || 0
-    const currentBlock = await provider.getBlockNumber()
-    const f = factory.filters as any
+    const currentBlock = await getSafeBlockNumber(chainId, provider)
+    const scan = (eventName: string, indexedArgs: (string | null)[]) =>
+      scanEventLogs(chainId, config.factoryAddress, provider, iface, eventName, indexedArgs, fromBlock, currentBlock)
+    const canUseExplorerLifecycleScans =
+      Boolean(getExplorerApiKey()) && isEtherscanV2ChainSupported(chainId)
 
     // 1. CreatedPurchase: complete set of purchases the wallet is in, with full detail.
     //    CreatedPurchase(buyer, seller, price, collateral, tokenAddress, purchaseId) — buyer & seller indexed.
-    const [createdAsBuyer, createdAsSeller] = await Promise.all([
-      scanFactoryEvents(factory, f.CreatedPurchase(wallet), fromBlock, currentBlock),
-      scanFactoryEvents(factory, f.CreatedPurchase(null, wallet), fromBlock, currentBlock),
-    ])
+    const createdAsBuyer = await scan('CreatedPurchase', [wallet])
+    const createdAsSeller = await scan('CreatedPurchase', [null, wallet])
 
     // 2. Lifecycle events filtered by the wallet (first indexed arg is the party).
-    const [buyerUnresolved, sellerUnresolved, buyerCompleted, sellerCompleted] = await Promise.all([
-      scanFactoryEvents(factory, f.BuyerUnresolvedPurchase(wallet), fromBlock, currentBlock),
-      scanFactoryEvents(factory, f.SellerUnresolvedPurchase(wallet), fromBlock, currentBlock),
-      scanFactoryEvents(factory, f.BuyerCompletedPurchase(wallet), fromBlock, currentBlock),
-      scanFactoryEvents(factory, f.SellerCompletedPurchase(wallet), fromBlock, currentBlock),
-    ])
+    //    AbortedPurchase(buyer, purchaseId) detects a buyer-side abort from an event,
+    //    so we don't need a per-clone state() read for those.
+    const buyerUnresolved = canUseExplorerLifecycleScans
+      ? await scan('BuyerUnresolvedPurchase', [wallet])
+      : []
+    const sellerUnresolved = canUseExplorerLifecycleScans
+      ? await scan('SellerUnresolvedPurchase', [wallet])
+      : []
+    const buyerCompleted = canUseExplorerLifecycleScans
+      ? await scan('BuyerCompletedPurchase', [wallet])
+      : []
+    const sellerCompleted = canUseExplorerLifecycleScans
+      ? await scan('SellerCompletedPurchase', [wallet])
+      : []
+    const abortedAsBuyer = canUseExplorerLifecycleScans
+      ? await scan('AbortedPurchase', [wallet])
+      : []
 
     type Base = {
       purchaseId: string
@@ -1080,7 +1648,7 @@ export const getUserPurchases = async (
     }
     const records = new Map<string, Base>()
 
-    const ingestCreated = (logs: ethers.EventLog[], role: 'buyer' | 'seller') => {
+    const ingestCreated = (logs: ScannedLog[], role: 'buyer' | 'seller') => {
       for (const log of logs) {
         const args = log.args as any
         const purchaseId: string | undefined = args?.purchaseId
@@ -1103,21 +1671,23 @@ export const getUserPurchases = async (
     ingestCreated(createdAsSeller, 'seller')
 
     const confirmedIds = new Set<string>()
-    const completedLogs = new Map<string, ethers.EventLog>()
-    const markConfirmed = (logs: ethers.EventLog[]) => {
+    const abortedIds = new Set<string>()
+    const completedLogs = new Map<string, ScannedLog>()
+    const collectIds = (logs: ScannedLog[], into: Set<string>) => {
       for (const log of logs) {
         const id = (log.args as any)?.purchaseId?.toLowerCase()
-        if (id) confirmedIds.add(id)
+        if (id) into.add(id)
       }
     }
-    const markCompleted = (logs: ethers.EventLog[]) => {
+    const markCompleted = (logs: ScannedLog[]) => {
       for (const log of logs) {
         const id = (log.args as any)?.purchaseId?.toLowerCase()
         if (id) completedLogs.set(id, log)
       }
     }
-    markConfirmed(buyerUnresolved)
-    markConfirmed(sellerUnresolved)
+    collectIds(buyerUnresolved, confirmedIds)
+    collectIds(sellerUnresolved, confirmedIds)
+    collectIds(abortedAsBuyer, abortedIds)
     markCompleted(buyerCompleted)
     markCompleted(sellerCompleted)
 
@@ -1175,8 +1745,14 @@ export const getUserPurchases = async (
       } else if (confirmedIds.has(key)) {
         status = 'in-escrow'
         category = 'ongoing'
+      } else if (abortedIds.has(key)) {
+        // Buyer-side abort caught directly from the AbortedPurchase event.
+        status = 'aborted'
+        category = 'history'
       } else {
-        // Created only — abort emits no event, so read the clone's state to disambiguate.
+        // Created only, no terminal event matched. AbortedPurchase indexes only the
+        // buyer, so a seller viewing an aborted deal lands here — read the clone's
+        // state() to disambiguate.
         let state = 1
         try {
           const clone = new ethers.Contract(r.purchaseId, config.cloneAbi, provider)
@@ -1187,6 +1763,12 @@ export const getUserPurchases = async (
         if (state === 1) {
           status = 'awaiting-confirmation'
           category = 'ongoing'
+        } else if (state === 2) {
+          status = 'in-escrow'
+          category = 'ongoing'
+        } else if (state === 0) {
+          status = 'completed'
+          category = 'history'
         } else {
           status = 'aborted'
           category = 'history'
@@ -1209,8 +1791,8 @@ export const getUserPurchases = async (
     const blockTimes = new Map<number, Date>()
     await Promise.all(
       Array.from(blockNumbers).map(async (n) => {
-        const block = await provider.getBlock(n)
-        if (block?.timestamp) blockTimes.set(n, new Date(Number(block.timestamp) * 1000))
+        const ts = await getSafeBlockTimestamp(chainId, provider, n)
+        if (ts) blockTimes.set(n, ts)
       })
     )
 
@@ -1233,10 +1815,13 @@ export const getUserPurchases = async (
 
     results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     userPurchasesCache.set(cacheKey, results)
+    setCachedUserPurchases(chainId, wallet, results)
     return results
   } catch (error) {
+    // Surface the failure so the page can show an error + retry, instead of an
+    // empty list that reads as "you have no purchases" when the scan really failed.
     console.error('getUserPurchases error:', error)
-    return []
+    throw new Error(formatEthersError(error) || 'Failed to load purchases')
   }
 }
 
