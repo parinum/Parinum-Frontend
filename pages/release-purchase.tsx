@@ -17,6 +17,7 @@ export default function ReleasePurchase() {
   const [purchaseDetails, setPurchaseDetails] = useState<PurchaseDetails | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [message, setMessage] = useState('')
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
@@ -45,7 +46,7 @@ export default function ReleasePurchase() {
       setMessage('Please enter a purchase ID')
       return
     }
-    setIsLoading(true)
+    setIsDetailsLoading(true)
     setMessage('')
     try {
       const result = await getPurchaseDetails(purchaseId)
@@ -60,7 +61,7 @@ export default function ReleasePurchase() {
       setMessage(`Error fetching details: ${e}`)
       setPurchaseDetails(null)
     } finally {
-      setIsLoading(false)
+      setIsDetailsLoading(false)
     }
   }
 
@@ -113,6 +114,7 @@ export default function ReleasePurchase() {
             showDetails={showDetails}
             message={message}
             isSuccess={isSuccess}
+            isDetailsLoading={isDetailsLoading}
             isLoading={isLoading}
             onToggleDetails={handleGetDetails}
             onSubmit={handleSubmit}

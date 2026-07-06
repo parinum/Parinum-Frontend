@@ -354,6 +354,7 @@ interface PurchaseIdActionViewProps {
   details: PurchaseDetails | null
   message: string
   isSuccess?: boolean
+  isDetailsLoading: boolean
   isLoading: boolean
   isSubmitDisabled: boolean
   submitLabel: string
@@ -377,6 +378,7 @@ function PurchaseIdActionView({
   details,
   message,
   isSuccess = false,
+  isDetailsLoading,
   isLoading,
   isSubmitDisabled,
   submitLabel,
@@ -426,11 +428,11 @@ function PurchaseIdActionView({
               <button
                 type="button"
                 onClick={onToggleDetails}
-                disabled={isLoading}
+                disabled={isDetailsLoading}
                 {...guideTargetProps('showDetails', tutorialMode)}
                 className={cx('w-full px-6 py-3 bg-slate-200 dark:bg-dark-700 text-slate-800 dark:text-white font-semibold rounded-xl hover:bg-slate-300 dark:hover:bg-dark-600 transition-colors sm:w-auto sm:whitespace-nowrap', guideRing(tutorialTarget === 'showDetails'))}
               >
-                {showDetails ? 'Hide Details' : 'Show Details'}
+                {isDetailsLoading ? 'Loading Details...' : showDetails ? 'Hide Details' : 'Show Details'}
               </button>
             </div>
           </div>
@@ -472,6 +474,7 @@ interface ConfirmPurchaseViewProps {
   showDetails: boolean
   message: string
   isSuccess?: boolean
+  isDetailsLoading: boolean
   isLoading: boolean
   onToggleDetails: () => void
   onSubmit: (e: React.FormEvent) => void
@@ -489,6 +492,7 @@ export function ConfirmPurchaseView(props: ConfirmPurchaseViewProps) {
       isSubmitDisabled={!props.purchaseId}
       submitLabel="Confirm Purchase"
       loadingLabel="Confirming Purchase..."
+      isDetailsLoading={props.isDetailsLoading}
       tooltip="Only sellers can confirm purchases. The seller sends the collateral amount, and only receives the funds after the buyer confirms receipt of goods."
       infoSection={
         props.tutorialMode ? null : (
@@ -545,6 +549,7 @@ export function ReleasePurchaseView(props: ReleasePurchaseViewProps) {
       isSubmitDisabled={!props.purchaseId}
       submitLabel="Release Funds"
       loadingLabel="Processing..."
+      isDetailsLoading={props.isDetailsLoading}
       tooltip="Only buyers can release purchases. Both parties receive their collateral back and the price amount is sent to the seller."
       infoSection={
         props.tutorialMode ? null : (
@@ -571,6 +576,7 @@ interface AbortPurchaseViewProps {
   showDetails: boolean
   message: string
   isSuccess?: boolean
+  isDetailsLoading: boolean
   isLoading: boolean
   onToggleDetails: () => void
   onSubmit: (e: React.FormEvent) => void
@@ -587,6 +593,7 @@ export function AbortPurchaseView({
   showDetails,
   message,
   isSuccess = false,
+  isDetailsLoading,
   isLoading,
   onToggleDetails,
   onSubmit,
@@ -630,8 +637,8 @@ export function AbortPurchaseView({
                 className={cx('min-w-0 flex-1 px-4 py-3 bg-slate-100 dark:bg-dark-700/50 border border-primary-500/30 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all duration-200 font-mono text-sm', guideRing(tutorialTarget === 'purchaseId'))}
                 required
               />
-              <button type="button" onClick={onToggleDetails} disabled={isLoading} {...guideTargetProps('showDetails', tutorialMode)} className="w-full px-6 py-3 bg-slate-200 dark:bg-dark-700 text-slate-800 dark:text-white font-semibold rounded-xl hover:bg-slate-300 dark:hover:bg-dark-600 transition-colors sm:w-auto sm:whitespace-nowrap">
-                {showDetails ? 'Hide Details' : 'Show Details'}
+              <button type="button" onClick={onToggleDetails} disabled={isDetailsLoading} {...guideTargetProps('showDetails', tutorialMode)} className="w-full px-6 py-3 bg-slate-200 dark:bg-dark-700 text-slate-800 dark:text-white font-semibold rounded-xl hover:bg-slate-300 dark:hover:bg-dark-600 transition-colors sm:w-auto sm:whitespace-nowrap">
+                {isDetailsLoading ? 'Loading Details...' : showDetails ? 'Hide Details' : 'Show Details'}
               </button>
             </div>
           </div>
