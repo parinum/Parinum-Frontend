@@ -492,7 +492,6 @@ export function ConfirmPurchaseView(props: ConfirmPurchaseViewProps) {
       isSubmitDisabled={!props.purchaseId}
       submitLabel="Confirm Purchase"
       loadingLabel="Confirming Purchase..."
-      isDetailsLoading={props.isDetailsLoading}
       tooltip="Only sellers can confirm purchases. The seller sends the collateral amount, and only receives the funds after the buyer confirms receipt of goods."
       infoSection={
         props.tutorialMode ? null : (
@@ -549,7 +548,6 @@ export function ReleasePurchaseView(props: ReleasePurchaseViewProps) {
       isSubmitDisabled={!props.purchaseId}
       submitLabel="Release Funds"
       loadingLabel="Processing..."
-      isDetailsLoading={props.isDetailsLoading}
       tooltip="Only buyers can release purchases. Both parties receive their collateral back and the price amount is sent to the seller."
       infoSection={
         props.tutorialMode ? null : (

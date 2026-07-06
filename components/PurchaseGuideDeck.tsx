@@ -293,6 +293,7 @@ function SlideMock({
         purchaseDetails={detailsPanelOpen ? mockPurchaseDetails : null}
         showDetails={detailsPanelOpen}
         message={sceneIndex >= 4 ? 'Purchase confirmed successfully!' : ''}
+        isDetailsLoading={false}
         isLoading={false}
         onToggleDetails={() => {}}
         onSubmit={noopSubmit}
@@ -311,6 +312,7 @@ function SlideMock({
         purchaseDetails={detailsPanelOpen ? { ...mockPurchaseDetails, status: 'confirmed' } : null}
         showDetails={detailsPanelOpen}
         message={sceneIndex >= 3 ? 'Funds released successfully!' : ''}
+        isDetailsLoading={false}
         isLoading={false}
         onToggleDetails={() => {}}
         onSubmit={noopSubmit}
@@ -328,6 +330,7 @@ function SlideMock({
       purchaseDetails={detailsPanelOpen ? mockPurchaseDetails : null}
       showDetails={detailsPanelOpen}
       message={sceneIndex >= 3 ? 'Purchase aborted successfully. All funds have been returned.' : ''}
+      isDetailsLoading={false}
       isLoading={false}
       onToggleDetails={() => {}}
       onSubmit={noopSubmit}
