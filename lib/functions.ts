@@ -75,9 +75,11 @@ export interface StakeData {
 // PRM Funding-related interfaces
 export interface IcoInfo {
   poolPRM: string
+  liquidityPRM: string
   poolETH: string
   deploymentTime: string
   timeLimit: string
+  currentMultiplier: string
   weightedETHRaised: string
   soldAmount: string
 }
@@ -2055,27 +2057,35 @@ export const getIcoInfo = async (options: ReadOptions = {}): Promise<IcoInfo> =>
 
     const icoInterface = PRMICO__factory.createInterface()
 
-    const [poolPRMRaw, poolETHRaw, deploymentTimeRaw, timeLimitRaw, weightedETHRaisedRaw] = await Promise.all([
+    const [poolPRMRaw, liquidityPRMRaw, poolETHRaw, deploymentTimeRaw, timeLimitRaw, weightedETHRaisedRaw, currentMultiplierRaw] = await Promise.all([
       readContractValue(chainId, ico, icoInterface.encodeFunctionData('poolPRM')),
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('liquidityPRM')),
       readContractValue(chainId, ico, icoInterface.encodeFunctionData('poolETH')),
       readContractValue(chainId, ico, icoInterface.encodeFunctionData('deploymentTime')),
       readContractValue(chainId, ico, icoInterface.encodeFunctionData('timeLimit')),
       readContractValue(chainId, ico, icoInterface.encodeFunctionData('weightedETHRaised')),
+      readContractValue(chainId, ico, icoInterface.encodeFunctionData('getMultiplier')),
     ])
 
     const poolPRM = parseHexBigInt(poolPRMRaw)
+    const liquidityPRM = parseHexBigInt(liquidityPRMRaw)
     const poolETH = parseHexBigInt(poolETHRaw)
     const deploymentTime = parseHexBigInt(deploymentTimeRaw)
     const timeLimit = parseHexBigInt(timeLimitRaw)
     const weightedETHRaised = parseHexBigInt(weightedETHRaisedRaw)
+    const currentMultiplier = parseHexBigInt(currentMultiplierRaw)
+
+    const distributablePRM = poolPRM > liquidityPRM ? poolPRM - liquidityPRM : 0n
 
     const res: IcoInfo = {
       poolPRM: ethers.formatEther(poolPRM),
+      liquidityPRM: ethers.formatEther(liquidityPRM),
       poolETH: ethers.formatEther(poolETH),
       deploymentTime: deploymentTime.toString(),
       timeLimit: timeLimit.toString(),
+      currentMultiplier: ethers.formatEther(currentMultiplier),
       weightedETHRaised: ethers.formatEther(weightedETHRaised),
-      soldAmount: ethers.formatEther(weightedETHRaised) // Approximation
+      soldAmount: ethers.formatEther(distributablePRM)
     }
     readCache.set(cacheKey, res)
     return res
@@ -2139,19 +2149,32 @@ export const getAccountIcoInfo = async (
 // Calculate ICO price based on current pool state
 export const calculateIcoPrice = async (
   ethAmount: string,
+  multiplierValue: number = 1,
   options: ReadOptions = {}
 ): Promise<string> => {
   try {
     const icoInfo = await getIcoInfo(options)
-    const poolETH = parseFloat(icoInfo.poolETH)
-    const poolPRM = parseFloat(icoInfo.poolPRM)
-    const ethAmountNum = parseFloat(ethAmount)
-    
-    if (poolETH === 0 || poolPRM === 0) return "0"
-    
-    // Simple price calculation: PRM tokens = ETH * (poolPRM / poolETH)
-    const prmTokens = ethAmountNum * (poolPRM / poolETH)
-    return prmTokens.toFixed(6)
+    const poolPrmWei = ethers.parseEther(icoInfo.poolPRM || '0')
+    const liquidityPrmWei = ethers.parseEther(icoInfo.liquidityPRM || '0')
+    const distributablePrmWei = poolPrmWei > liquidityPrmWei ? poolPrmWei - liquidityPrmWei : 0n
+    const weightedRaisedWei = ethers.parseEther(icoInfo.weightedETHRaised || '0')
+    const contributionWei = ethers.parseEther(ethAmount || '0')
+
+    if (distributablePrmWei <= 0n || contributionWei <= 0n) return '0'
+
+    const userMultiplierWei = ethers.parseEther(multiplierValue.toString())
+    const onChainMultiplierWei = ethers.parseEther(icoInfo.currentMultiplier || '1')
+    const effectiveMultiplierWei = userMultiplierWei < onChainMultiplierWei ? userMultiplierWei : onChainMultiplierWei
+    const safeMultiplierWei = effectiveMultiplierWei < ethers.WeiPerEther ? ethers.WeiPerEther : effectiveMultiplierWei
+
+    const weightedContributionWei = (contributionWei * safeMultiplierWei) / ethers.WeiPerEther
+    const projectedWeightedTotalWei = weightedRaisedWei + weightedContributionWei
+
+    if (projectedWeightedTotalWei <= 0n) return '0'
+
+    // Estimated allocation is your projected weighted share of poolPRM.
+    const estimatedPrmWei = (distributablePrmWei * weightedContributionWei) / projectedWeightedTotalWei
+    return ethers.formatEther(estimatedPrmWei)
   } catch (error) {
     console.error('Failed to calculate ICO price:', error)
     return "0"

@@ -54,9 +54,11 @@ const InfoIcon = ({ className }: { className?: string }) => (
 
 const EMPTY_ICO_INFO: IcoInfo = {
   poolPRM: '0',
+  liquidityPRM: '0',
   poolETH: '0',
   deploymentTime: '0',
   timeLimit: '0',
+  currentMultiplier: '1',
   weightedETHRaised: '0',
   soldAmount: '0'
 }
@@ -263,10 +265,8 @@ export default function PRMFunding() {
   useEffect(() => {
     const calculateTokens = async () => {
       if (ethAmount && parseFloat(ethAmount) > 0) {
-        const prmAmount = await calculateIcoPrice(ethAmount, { targetChainId: FUNDING_CHAIN_ID })
-        // Apply multiplier to estimation
-        const multiplied = parseFloat(prmAmount) * multiplier
-        setEstimatedPRM(multiplied.toString())
+        const prmAmount = await calculateIcoPrice(ethAmount, multiplier, { targetChainId: FUNDING_CHAIN_ID })
+        setEstimatedPRM(prmAmount)
       } else {
         setEstimatedPRM('0')
       }
@@ -309,7 +309,8 @@ export default function PRMFunding() {
     setMessage('')
 
     try {
-      const result = await buyPRMTokens(ethers.ZeroAddress, ethAmount, multiplier)
+      const effectiveMultiplier = clampMultiplier(multiplier)
+      const result = await buyPRMTokens(ethers.ZeroAddress, ethAmount, effectiveMultiplier)
       
       if (result.success) {
         setMessage(`Successfully purchased PRM tokens! Transaction: ${result.txHash}`)
@@ -357,6 +358,28 @@ export default function PRMFunding() {
   const progressPercentage = icoInfo.poolETH !== '0' 
     ? Math.min((parseFloat(icoInfo.weightedETHRaised) / parseFloat(icoInfo.poolETH)) * 100, 100) 
     : 0
+
+  const onChainMaxMultiplier = Math.max(1, parseFloat(icoInfo.currentMultiplier || '1') || 1)
+  const multiplierInputMax = Math.min(1.8, onChainMaxMultiplier)
+  const multiplierSliderStep = 0.001
+  const timeLimitSeconds = parseInt(icoInfo.timeLimit || '0', 10)
+  const impliedCliffDays = timeLimitSeconds > 0
+    ? (timeLimitSeconds * Math.max(multiplier - 1, 0)) / (24 * 60 * 60)
+    : 0
+
+  const clampMultiplier = (value: number) => {
+    if (Number.isNaN(value)) return 1
+    if (value > multiplierInputMax) return multiplierInputMax
+    if (value < 1) return 1
+    return value
+  }
+
+  useEffect(() => {
+    setMultiplier((prev) => {
+      const clamped = clampMultiplier(prev)
+      return clamped === prev ? prev : Number(clamped.toFixed(3))
+    })
+  }, [multiplierInputMax])
 
   // Format time remaining
   const formatTimeRemaining = () => {
@@ -566,7 +589,7 @@ export default function PRMFunding() {
                 </div>
               </div>
               <p className="text-2xl font-bold text-secondary-900 dark:text-white mt-2">
-                {(40000000).toLocaleString()} <span className="text-lg text-secondary-500 font-normal">PRM</span>
+                {Math.max(0, Math.round(parseFloat(icoInfo.poolPRM || '0') - parseFloat(icoInfo.liquidityPRM || '0'))).toLocaleString()} <span className="text-lg text-secondary-500 font-normal">PRM</span>
               </p>
               <p className="text-sm text-secondary-600 dark:text-dark-300 mt-2">Available for distribution</p>
             </motion.div>
@@ -642,33 +665,47 @@ export default function PRMFunding() {
                           </div>
                         </div>
                       </label>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-secondary-700 dark:text-dark-200">
+                          {multiplier.toFixed(3)}x
+                        </span>
+                        <span className="text-xs text-secondary-500 dark:text-dark-400">
+                          {impliedCliffDays > 0 ? `${impliedCliffDays.toFixed(1)}d lockup` : 'No lockup'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setMultiplier(multiplierInputMax)}
+                          className="rounded-full border border-slate-300/70 px-3 py-1 text-xs font-medium text-secondary-700 transition-colors hover:border-slate-400 hover:text-secondary-900 dark:border-slate-600 dark:text-dark-200 dark:hover:border-slate-500 dark:hover:text-white"
+                        >
+                          Max
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <input
                         type="range"
                         min="1"
-                        max="1.8"
-                        step="0.1"
+                        max={multiplierInputMax}
+                        step={multiplierSliderStep}
                         value={multiplier}
-                        onChange={(e) => setMultiplier(parseFloat(e.target.value))}
+                        onChange={(e) => setMultiplier(clampMultiplier(parseFloat(e.target.value)))}
                         className="w-full cursor-pointer accent-slate-500"
                       />
                        <input
                         type="number"
                         min="1"
-                        max="1.8"
-                        step="0.1"
-                        value={multiplier}
+                        max={multiplierInputMax}
+                        step={multiplierSliderStep}
+                        value={multiplier.toFixed(3)}
                         onChange={(e) => {
-                          let val = parseFloat(e.target.value);
-                          if(isNaN(val)) val = 1;
-                          if (val > 1.8) val = 1.8;
-                          if (val < 1) val = 1;
-                          setMultiplier(val);
+                          setMultiplier(clampMultiplier(parseFloat(e.target.value)))
                         }}
                         className="w-20 px-3 py-2 bg-slate-100 dark:bg-dark-700/50 border border-slate-500/30 rounded-xl text-secondary-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-slate-500/50"
                       />
                     </div>
+                    <p className="mt-2 text-xs text-secondary-500 dark:text-dark-400">
+                      Live max multiplier: {onChainMaxMultiplier.toFixed(3)}x
+                    </p>
                   </div>
 
                   {parseFloat(ethAmount || '0') > 0 && parseFloat(estimatedPRM) > 0 && (
@@ -815,7 +852,10 @@ export default function PRMFunding() {
                         {(() => {
                           const myWeighted = parseFloat(accountInfo.weightedContribution)
                           const totalWeighted = parseFloat(icoInfo.weightedETHRaised)
-                          const prmNow = totalWeighted > 0 ? (40000000 * (myWeighted / totalWeighted)) : 0
+                          const poolPrm = parseFloat(icoInfo.poolPRM)
+                          const liquidityPrm = parseFloat(icoInfo.liquidityPRM)
+                          const distributablePrm = Math.max(poolPrm - liquidityPrm, 0)
+                          const prmNow = totalWeighted > 0 ? (distributablePrm * (myWeighted / totalWeighted)) : 0
                           return prmNow.toLocaleString(undefined, { maximumFractionDigits: 2 })
                         })()} PRM
                       </span>
